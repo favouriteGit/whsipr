@@ -400,11 +400,13 @@ function ConfessionCard({
               </button>
             )
           })}
-          <div className="relative">
-            <button onClick={onReply}
+          <button onClick={onReply}
                   className="px-2.5 py-1 font-mono text-[11px] border bg-surface2 border-[var(--border)] text-muted hover:border-[var(--border2)] hover:text-[var(--text)] transition-all flex items-center gap-1">
             💬 Reply
           </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowPicker(p => !p)}
               className="px-2.5 py-1 font-mono text-[11px] border bg-surface2 border-[var(--border)] text-muted hover:border-[var(--border2)] hover:text-[var(--text)] transition-all">
               + React
             </button>
