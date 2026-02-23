@@ -4,6 +4,10 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Whispr — Anonymous Group Confessions',
   description: 'Anonymous confessions, posted publicly to your group board. No gatekeeping. No selective screenshots.',
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+  },
   openGraph: {
     title: 'Whispr',
     description: 'Speak freely. Confess anonymously.',
