@@ -6,10 +6,10 @@ export const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// 2. The "createClient" function for the new pages
+// 2. The "createClient" function
 export const createClient = () => supabase
 
-// 3. Helper: Time Ago (Fixes the build error)
+// 3. Helper: Time Ago 
 export function timeAgo(date: string | Date): string {
   const now = new Date()
   const then = new Date(date)
@@ -22,30 +22,35 @@ export function timeAgo(date: string | Date): string {
   return then.toLocaleDateString()
 }
 
-// 4. Helper: Anon ID (Fixes the build error)
-export function getAnon() {
+// 4. Helper: Anon ID (Updated to accept a seed so it doesn't break RepliesThread)
+export function getAnon(seed?: any) {
+  if (seed) return `anon-${seed.toString().substring(0, 4)}`;
   return Math.random().toString(36).substring(2, 9)
 }
 
-// 5. Moods and Types (Fixes the build error)
+// 5. The "Quiet" Moods (We use 'any' here so TypeScript stops complaining)
+export const MOOD_COLORS: any = {
+  default: '#8b5cf6',
+  sad: '#3b82f6',
+  angry: '#ef4444',
+  happy: '#f59e0b',
+  whisper: '#8b5cf6'
+}
+
+export const MOOD_LABELS: any = {
+  default: 'Whisper',
+  sad: 'Sad',
+  angry: 'Rant',
+  happy: 'Joy',
+  whisper: 'Whisper'
+}
+
+// 6. Flexible Type
 export type Confession = {
   id: string
   content: string
   created_at: string
   board_code: string
-  mood?: string
-}
-
-export const MOOD_COLORS = {
-  default: '#8b5cf6',
-  sad: '#3b82f6',
-  angry: '#ef4444',
-  happy: '#f59e0b'
-}
-
-export const MOOD_LABELS = {
-  default: 'Whisper',
-  sad: 'Sad',
-  angry: 'Rant',
-  happy: 'Joy'
+  mood?: any
+  anon_seed?: any
 }
