@@ -1,15 +1,14 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
-// 1. The Core Connection
+// 1. Connection
 export const supabase = createSupabaseClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// 2. The "createClient" function
 export const createClient = () => supabase
 
-// 3. Helper: Time Ago 
+// 2. Helper: Time Ago
 export function timeAgo(date: string | Date): string {
   const now = new Date()
   const then = new Date(date)
@@ -22,13 +21,28 @@ export function timeAgo(date: string | Date): string {
   return then.toLocaleDateString()
 }
 
-// 4. Helper: Anon ID (Updated to accept a seed so it doesn't break RepliesThread)
-export function getAnon(seed?: any) {
-  if (seed) return `anon-${seed.toString().substring(0, 4)}`;
-  return Math.random().toString(36).substring(2, 9)
+// 3. Helper: getAnon (The fix for the "Property color does not exist" error)
+// This now returns a "package" (object) instead of just a string.
+export function getAnon(seed: any = 'default') {
+  const s = seed?.toString() || 'default';
+  
+  // Use the seed to pick a consistent color and letter
+  const colors = ['#A78BFA', '#F472B6', '#2DD4BF', '#FB923C', '#60A5FA'];
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  
+  // A tiny bit of math to make sure the same user always gets the same avatar
+  const index = s.length % colors.length;
+  const charIndex = s.length % letters.length;
+  const num = s.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 100;
+
+  return {
+    color: colors[index],
+    letter: letters[charIndex],
+    number: num
+  };
 }
 
-// 5. The "Quiet" Moods (We use 'any' here so TypeScript stops complaining)
+// 4. Moods (Keep these "any" to avoid index errors)
 export const MOOD_COLORS: any = {
   default: '#8b5cf6',
   sad: '#3b82f6',
@@ -45,7 +59,7 @@ export const MOOD_LABELS: any = {
   whisper: 'Whisper'
 }
 
-// 6. Flexible Type
+// 5. Types
 export type Confession = {
   id: string
   content: string
