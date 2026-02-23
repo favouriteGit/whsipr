@@ -8,6 +8,7 @@ import {
   getSessionId, getAnon, timeAgo, MOOD_COLORS, MOOD_LABELS, MOODS,
   type Board, type Confession
 } from '@/lib/supabase'
+import ShareCard from '@/components/ShareCard'
 
 const REACTION_EMOJIS = ['❤️', '💀', '😭', '😂', '🫂', '🔥', '😱', '👀', '🤯', '🫡']
 
@@ -22,6 +23,7 @@ export default function BoardPage() {
   const [notFound, setNotFound] = useState(false)
   const [showConfessModal, setShowConfessModal] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [sharingConfession, setSharingConfession] = useState<Confession | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const sessionId = typeof window !== 'undefined' ? getSessionId() : ''
 
@@ -245,6 +247,7 @@ export default function BoardPage() {
                 index={i}
                 myReactions={myReactions}
                 onReact={handleReaction}
+                onShare={() => setSharingConfession(c)}
                 sessionId={sessionId}
               />
             ))}
@@ -289,6 +292,15 @@ export default function BoardPage() {
         </Modal>
       )}
 
+      {/* Share Card Modal */}
+      {sharingConfession && (
+        <ShareCard
+          confession={sharingConfession}
+          boardName={board?.name || 'whispr'}
+          onClose={() => setSharingConfession(null)}
+        />
+      )}
+
       {/* Toast */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[200] flex items-center gap-2.5 px-5 py-3 bg-surface border font-mono text-xs clip-corner-sm animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)] ${
@@ -307,12 +319,13 @@ export default function BoardPage() {
 // ── Confession Card ────────────────────────────────────────
 
 function ConfessionCard({
-  confession: c, index, myReactions, onReact
+  confession: c, index, myReactions, onReact, onShare
 }: {
   confession: Confession
   index: number
   myReactions: Set<string>
   onReact: (id: string, emoji: string) => void
+  onShare: () => void
   sessionId: string
 }) {
   const anon = getAnon(c.anon_seed)
@@ -394,9 +407,14 @@ function ConfessionCard({
             )}
           </div>
         </div>
-        <span className="font-mono text-[10px] px-2 py-1 border"
+        <span className="font-mono text-[10px] px-2 py-1 border flex items-center gap-2"
               style={{ color, borderColor: `${color}30`, background: `${color}10` }}>
           {c.mood} {moodLabel.toUpperCase()}
+          <button onClick={onShare}
+                  className="ml-1 opacity-60 hover:opacity-100 transition-opacity"
+                  title="Share this confession">
+            ↗
+          </button>
         </span>
       </div>
     </div>
