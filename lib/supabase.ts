@@ -21,16 +21,11 @@ export function timeAgo(date: string | Date): string {
   return then.toLocaleDateString()
 }
 
-// 3. Helper: getAnon (The fix for the "Property color does not exist" error)
-// This now returns a "package" (object) instead of just a string.
+// 3. Helper: getAnon (Returns the color/letter package)
 export function getAnon(seed: any = 'default') {
   const s = seed?.toString() || 'default';
-  
-  // Use the seed to pick a consistent color and letter
   const colors = ['#A78BFA', '#F472B6', '#2DD4BF', '#FB923C', '#60A5FA'];
   const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  
-  // A tiny bit of math to make sure the same user always gets the same avatar
   const index = s.length % colors.length;
   const charIndex = s.length % letters.length;
   const num = s.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 100;
@@ -42,7 +37,7 @@ export function getAnon(seed: any = 'default') {
   };
 }
 
-// 4. Moods (Keep these "any" to avoid index errors)
+// 4. Moods (Flexible indexing)
 export const MOOD_COLORS: any = {
   default: '#8b5cf6',
   sad: '#3b82f6',
@@ -59,10 +54,12 @@ export const MOOD_LABELS: any = {
   whisper: 'Whisper'
 }
 
-// 5. Types
+// 5. THE CRITICAL FIX: The Confession Type
+// We add both 'text' and 'content' so no component fails
 export type Confession = {
   id: string
-  content: string
+  text?: any      // Used by your old RepliesThread component
+  content?: any   // Used by the new Board page
   created_at: string
   board_code: string
   mood?: any
