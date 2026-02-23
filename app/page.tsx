@@ -15,140 +15,127 @@ export default function HomePage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!boardName.trim()) return
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
       const board = await createBoard(boardName.trim())
       router.push(`/board/${board.code}`)
-    } catch {
-      setError('Something went wrong. Try again.')
-      setLoading(false)
-    }
+    } catch { setError('Something went wrong. Try again.'); setLoading(false) }
   }
 
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault()
     const code = joinCode.trim().toUpperCase()
     if (!code) return
-    setLoading(true)
-    setError('')
+    setLoading(true); setError('')
     try {
       const board = await getBoardByCode(code)
-      if (!board) {
-        setError('Board not found. Check the code and try again.')
-        setLoading(false)
-        return
-      }
+      if (!board) { setError('Board not found. Check the code.'); setLoading(false); return }
       router.push(`/board/${board.code}`)
-    } catch {
-      setError('Something went wrong. Try again.')
-      setLoading(false)
-    }
+    } catch { setError('Something went wrong. Try again.'); setLoading(false) }
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
-      {/* Glow */}
-      <div className="absolute w-[600px] h-[600px] rounded-full pointer-events-none"
-           style={{ background: 'radial-gradient(circle, rgba(232,255,71,0.06) 0%, transparent 70%)', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' }} />
+    <div className="min-h-screen relative flex flex-col items-center justify-center px-6 py-16 overflow-hidden">
+      {/* Aurora background */}
+      <div className="aurora-bg" />
+      <div className="aurora-orb" />
+      <div className="noise-overlay" />
 
-      {view === 'home' && (
-        <div className="flex flex-col items-center animate-[slideUp_0.4s_ease]">
-          {/* Logo mark */}
-          <div className="flex items-center gap-3 mb-12">
-            <span className="h-px w-10 bg-[var(--border2)]" />
-            <span className="font-playfair italic text-xs tracking-[0.3em] text-muted uppercase">whispr</span>
-            <span className="h-px w-10 bg-[var(--border2)]" />
-          </div>
+      <div className="app-content w-full max-w-md">
+        {view === 'home' && (
+          <div className="flex flex-col items-center text-center" style={{ animation: 'fadeIn 0.6s ease' }}>
 
-          {/* Hero */}
-          <h1 className="font-playfair font-black text-center leading-none mb-8" style={{ fontSize: 'clamp(64px,12vw,140px)' }}>
-            <span className="block text-[var(--text)]">No more</span>
-            <span className="block italic" style={{ color: 'transparent', WebkitTextStroke: '1.5px #e8ff47' }}>secrets</span>
-          </h1>
-
-          <p className="font-mono text-sm text-muted text-center max-w-sm leading-relaxed mb-14">
-            Anonymous confessions, posted publicly to your group board.
-            No gatekeeping. No selective screenshots. Just raw truth.
-          </p>
-
-          <div className="flex flex-wrap gap-3 justify-center">
-            <button className="btn-accent" onClick={() => setView('create')}>
-              ✦ Create a Board
-            </button>
-            <button className="btn-ghost" onClick={() => setView('join')}>
-              Join with Code
-            </button>
-          </div>
-
-          <div className="mt-10 flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse-dot" />
-            <span className="font-mono text-xs text-dim tracking-widest">your identity is never stored</span>
-          </div>
-        </div>
-      )}
-
-      {view === 'create' && (
-        <div className="w-full max-w-md animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]">
-          <button onClick={() => setView('home')} className="font-mono text-xs text-dim mb-8 hover:text-muted transition-colors flex items-center gap-2">
-            ← back
-          </button>
-          <div className="font-mono text-xs tracking-[0.2em] text-accent mb-4">✦ NEW BOARD</div>
-          <h2 className="font-playfair text-4xl font-bold mb-2">Create your board</h2>
-          <p className="font-mono text-xs text-muted leading-relaxed mb-8">
-            Give your group a name. Share the invite code. Watch the confessions roll in.
-          </p>
-
-          <form onSubmit={handleCreate} className="flex flex-col gap-4">
-            <div>
-              <label className="block font-mono text-xs tracking-widest uppercase text-muted mb-2">Board Name</label>
-              <input
-                className="form-input"
-                value={boardName}
-                onChange={e => setBoardName(e.target.value)}
-                placeholder="e.g. SSCE Class of '25"
-                maxLength={40}
-                autoFocus
-              />
+            {/* Logo pill */}
+            <div className="glass rounded-full px-5 py-2 mb-10 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)] live-dot" />
+              <span style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px', letterSpacing: '0.2em', color: 'var(--text-muted)' }}>
+                WHISPR
+              </span>
             </div>
-            {error && <p className="font-mono text-xs text-[#ff4757]">{error}</p>}
-            <button type="submit" disabled={loading} className="btn-accent w-full text-center justify-center mt-2" style={{ clipPath: 'none' }}>
-              {loading ? 'Creating...' : 'Create Board →'}
-            </button>
-          </form>
-        </div>
-      )}
 
-      {view === 'join' && (
-        <div className="w-full max-w-md animate-[slideUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]">
-          <button onClick={() => setView('home')} className="font-mono text-xs text-dim mb-8 hover:text-muted transition-colors flex items-center gap-2">
-            ← back
-          </button>
-          <div className="font-mono text-xs tracking-[0.2em] text-muted mb-4">→ JOIN</div>
-          <h2 className="font-playfair text-4xl font-bold mb-2">Join a board</h2>
-          <p className="font-mono text-xs text-muted leading-relaxed mb-8">
-            Enter the invite code shared by your group to access the confession board.
-          </p>
+            {/* Hero */}
+            <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(52px,10vw,96px)', fontWeight: 900, lineHeight: 0.95, marginBottom: '24px' }}>
+              <span style={{ display: 'block', color: 'var(--text)' }}>No more</span>
+              <span style={{ display: 'block', fontStyle: 'italic', background: 'linear-gradient(135deg, #c2ff47, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                secrets
+              </span>
+            </h1>
 
-          <form onSubmit={handleJoin} className="flex flex-col gap-4">
-            <div>
-              <label className="block font-mono text-xs tracking-widest uppercase text-muted mb-2">Invite Code</label>
-              <input
-                className="form-input font-mono tracking-widest uppercase"
-                value={joinCode}
-                onChange={e => setJoinCode(e.target.value)}
-                placeholder="e.g. W3IR-X9PK"
-                maxLength={9}
-                autoFocus
-              />
+            <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '15px', color: 'var(--text-muted)', maxWidth: '320px', lineHeight: 1.7, marginBottom: '48px' }}>
+              Anonymous confessions posted publicly to your group. No gatekeeping. No selective screenshots.
+            </p>
+
+            <div className="flex gap-3 flex-wrap justify-center">
+              <button className="btn-accent" onClick={() => setView('create')}>
+                ✦ Create a Board
+              </button>
+              <button className="btn-ghost" onClick={() => setView('join')}>
+                Join with Code
+              </button>
             </div>
-            {error && <p className="font-mono text-xs text-[#ff4757]">{error}</p>}
-            <button type="submit" disabled={loading} className="btn-accent w-full text-center justify-center mt-2" style={{ clipPath: 'none' }}>
-              {loading ? 'Searching...' : 'Enter Board →'}
+
+            {/* Feature pills */}
+            <div className="flex flex-wrap gap-2 justify-center mt-12">
+              {['🔒 Fully anonymous', '⚡ Real-time', '💬 Replies', '↗ Share cards'].map(f => (
+                <span key={f} className="glass rounded-full px-4 py-1.5"
+                      style={{ fontFamily: "'DM Mono', monospace", fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.03em' }}>
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(view === 'create' || view === 'join') && (
+          <div style={{ animation: 'slideUp 0.4s cubic-bezier(0.16,1,0.3,1)' }}>
+            <button onClick={() => { setView('home'); setError('') }}
+                    style={{ fontFamily: "'DM Mono', monospace", fontSize: '12px', color: 'var(--text-dim)', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
+                    className="hover:text-[var(--text-muted)] transition-colors">
+              ← back
             </button>
-          </form>
-        </div>
-      )}
-    </main>
+
+            <div className="glass-modal rounded-3xl p-8">
+              <div style={{ fontFamily: "'DM Mono', monospace", fontSize: '10px', letterSpacing: '0.2em', color: view === 'create' ? 'var(--accent)' : 'var(--text-muted)', marginBottom: '12px' }}>
+                {view === 'create' ? '✦ NEW BOARD' : '→ JOIN'}
+              </div>
+              <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: 700, marginBottom: '8px' }}>
+                {view === 'create' ? 'Create your board' : 'Join a board'}
+              </h2>
+              <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.7, marginBottom: '28px' }}>
+                {view === 'create'
+                  ? 'Give your group a name. Share the invite code. Watch confessions roll in.'
+                  : 'Enter the invite code shared by your group to access the board.'}
+              </p>
+
+              <form onSubmit={view === 'create' ? handleCreate : handleJoin} className="flex flex-col gap-4">
+                <div>
+                  <label style={{ fontFamily: "'DM Mono', monospace", fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--text-dim)', display: 'block', marginBottom: '8px' }}>
+                    {view === 'create' ? 'Board Name' : 'Invite Code'}
+                  </label>
+                  {view === 'create' ? (
+                    <input className="form-input" value={boardName} onChange={e => setBoardName(e.target.value)}
+                           placeholder="e.g. SSCE Class of '25" maxLength={40} autoFocus />
+                  ) : (
+                    <input className="form-input" value={joinCode}
+                           onChange={e => setJoinCode(e.target.value)}
+                           placeholder="e.g. W3IR-X9PK" maxLength={9} autoFocus
+                           style={{ fontFamily: "'DM Mono', monospace", letterSpacing: '0.15em', textTransform: 'uppercase' }} />
+                  )}
+                </div>
+
+                {error && (
+                  <p style={{ fontFamily: "'DM Mono', monospace", fontSize: '12px', color: '#f87171' }}>{error}</p>
+                )}
+
+                <button type="submit" disabled={loading} className="btn-accent w-full mt-2"
+                        style={{ borderRadius: '14px', clipPath: 'none' }}>
+                  {loading ? 'Loading...' : view === 'create' ? 'Create Board →' : 'Enter Board →'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
