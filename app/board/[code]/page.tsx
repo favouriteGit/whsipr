@@ -9,6 +9,7 @@ import {
   type Board, type Confession
 } from '@/lib/supabase'
 import ShareCard from '@/components/ShareCard'
+import RepliesThread from '@/components/RepliesThread'
 
 const REACTION_EMOJIS = ['❤️', '💀', '😭', '😂', '🫂', '🔥', '😱', '👀', '🤯', '🫡']
 
@@ -24,6 +25,7 @@ export default function BoardPage() {
   const [showConfessModal, setShowConfessModal] = useState(false)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [sharingConfession, setSharingConfession] = useState<Confession | null>(null)
+  const [replyingTo, setReplyingTo] = useState<Confession | null>(null)
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const sessionId = typeof window !== 'undefined' ? getSessionId() : ''
 
@@ -248,6 +250,7 @@ export default function BoardPage() {
                 myReactions={myReactions}
                 onReact={handleReaction}
                 onShare={() => setSharingConfession(c)}
+                onReply={() => setReplyingTo(c)}
                 sessionId={sessionId}
               />
             ))}
@@ -292,6 +295,14 @@ export default function BoardPage() {
         </Modal>
       )}
 
+      {/* Replies Thread Modal */}
+      {replyingTo && (
+        <RepliesThread
+          confession={replyingTo}
+          onClose={() => setReplyingTo(null)}
+        />
+      )}
+
       {/* Share Card Modal */}
       {sharingConfession && (
         <ShareCard
@@ -319,13 +330,14 @@ export default function BoardPage() {
 // ── Confession Card ────────────────────────────────────────
 
 function ConfessionCard({
-  confession: c, index, myReactions, onReact, onShare
+  confession: c, index, myReactions, onReact, onShare, onReply
 }: {
   confession: Confession
   index: number
   myReactions: Set<string>
   onReact: (id: string, emoji: string) => void
   onShare: () => void
+  onReply: () => void
   sessionId: string
 }) {
   const anon = getAnon(c.anon_seed)
@@ -389,8 +401,10 @@ function ConfessionCard({
             )
           })}
           <div className="relative">
-            <button
-              onClick={() => setShowPicker(p => !p)}
+            <button onClick={onReply}
+                  className="px-2.5 py-1 font-mono text-[11px] border bg-surface2 border-[var(--border)] text-muted hover:border-[var(--border2)] hover:text-[var(--text)] transition-all flex items-center gap-1">
+            💬 Reply
+          </button>
               className="px-2.5 py-1 font-mono text-[11px] border bg-surface2 border-[var(--border)] text-muted hover:border-[var(--border2)] hover:text-[var(--text)] transition-all">
               + React
             </button>
