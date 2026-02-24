@@ -1,35 +1,183 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cal+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #050505;
-  --foreground: #ffffff;
+  --bg: #0a0a0a;
+  --bg-subtle: #111111;
+  --bg-elevated: #161616;
+  --bg-hover: #1a1a1a;
+  --border: #1f1f1f;
+  --border-subtle: #1a1a1a;
+  --border-focus: #383838;
+  --text: #ededed;
+  --text-secondary: #a1a1a1;
+  --text-tertiary: #666666;
+  --accent: #ffffff;
+  --accent-bg: #ffffff12;
+  --green: #22c55e;
+  --green-dim: #22c55e20;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --purple-dim: #8b5cf615;
+  --yellow: #eab308;
+  --blue: #3b82f6;
+  --pink: #ec4899;
+  --orange: #f97316;
 }
 
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
-/* The Grainy Texture Overlay */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.04;
-  pointer-events: none;
-  background-image: url("https://grainy-gradients.vercel.app/noise.svg");
-  z-index: 50;
-}
+::selection { background: #ffffff20; color: var(--text); }
 
-input, textarea {
-  background: #111111 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-focus); border-radius: 4px; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes cardIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.animate-card-in { animation: cardIn 0.3s ease both; }
+.animate-ticker { animation: ticker 30s linear infinite; }
+.animate-pulse-dot { animation: pulse 2s infinite; }
+
+@layer components {
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--text);
+    color: var(--bg);
+    border: none;
+    padding: 8px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { background: #d4d4d4; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .btn-secondary:hover { background: var(--bg-hover); border-color: var(--border-focus); color: var(--text); }
+
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    color: var(--text-tertiary);
+    border: none;
+    padding: 6px 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .btn-ghost:hover { background: var(--bg-elevated); color: var(--text-secondary); }
+
+  .input {
+    width: 100%;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
+  .input::placeholder { color: var(--text-tertiary); }
+
+  .textarea {
+    width: 100%;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    resize: none;
+    min-height: 120px;
+    line-height: 1.6;
+  }
+  .textarea:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px rgba(255,255,255,0.04); }
+  .textarea::placeholder { color: var(--text-tertiary); }
+
+  .card {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .card:hover { border-color: var(--border-focus); background: var(--bg-elevated); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+    border: 1px solid;
+  }
+
+  .label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+  }
 }

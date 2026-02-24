@@ -1,67 +1,109 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
-// 1. Connection
-export const supabase = createSupabaseClient(
+export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-export const createClient = () => supabase
-
-// 2. Helper: Time Ago
-export function timeAgo(date: string | Date): string {
-  const now = new Date()
-  const then = new Date(date)
-  const seconds = Math.floor((now.getTime() - then.getTime()) / 1000)
-  if (seconds < 60) return 'just now'
-  const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  return then.toLocaleDateString()
+export type Board = {
+  id: string
+  name: string
+  code: string
+  created_at: string
+  member_count: number
 }
 
-// 3. Helper: getAnon (Returns the color/letter package)
-export function getAnon(seed: any = 'default') {
-  const s = seed?.toString() || 'default';
-  const colors = ['#A78BFA', '#F472B6', '#2DD4BF', '#FB923C', '#60A5FA'];
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const index = s.length % colors.length;
-  const charIndex = s.length % letters.length;
-  const num = s.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0) % 100;
-
-  return {
-    color: colors[index],
-    letter: letters[charIndex],
-    number: num
-  };
-}
-
-// 4. Moods (Flexible indexing)
-export const MOOD_COLORS: any = {
-  default: '#8b5cf6',
-  sad: '#3b82f6',
-  angry: '#ef4444',
-  happy: '#f59e0b',
-  whisper: '#8b5cf6'
-}
-
-export const MOOD_LABELS: any = {
-  default: 'Whisper',
-  sad: 'Sad',
-  angry: 'Rant',
-  happy: 'Joy',
-  whisper: 'Whisper'
-}
-
-// 5. THE CRITICAL FIX: The Confession Type
-// We add both 'text' and 'content' so no component fails
 export type Confession = {
   id: string
-  text?: any      // Used by your old RepliesThread component
-  content?: any   // Used by the new Board page
+  board_id: string
+  text: string
+  mood: string
+  anon_seed: number
   created_at: string
-  board_code: string
-  mood?: any
-  anon_seed?: any
+  reactions: Record<string, number>
+}
+
+export function getSessionId(): string {
+  if (typeof window === 'undefined') return 'server'
+  let sid = localStorage.getItem('whispr_session')
+  if (!sid) { sid = crypto.randomUUID(); localStorage.setItem('whispr_session', sid) }
+  return sid
+}
+
+export async function createBoard(name: string): Promise<Board> {
+  const code = generateCode()
+  const { data, error } = await supabase.from('boards').insert({ name, code }).select().single()
+  if (error) throw error
+  return data
+}
+
+export async function getBoardByCode(code: string): Promise<Board | null> {
+  const { data } = await supabase.from('boards').select().eq('code', code.toUpperCase()).single()
+  return data
+}
+
+export async function getConfessions(boardId: string): Promise<Confession[]> {
+  const { data, error } = await supabase.rpc('get_confessions_with_reactions', { p_board_id: boardId })
+  if (error) throw error
+  return (data || []) as Confession[]
+}
+
+export async function postConfession(boardId: string, text: string, mood: string): Promise<Confession> {
+  const { data, error } = await supabase.from('confessions').insert({ board_id: boardId, text, mood }).select().single()
+  if (error) throw error
+  return { ...data, reactions: {} }
+}
+
+export async function getMyReactions(boardId: string, sessionId: string): Promise<Set<string>> {
+  const { data } = await supabase.from('reactions').select('confession_id, emoji').eq('session_id', sessionId)
+  const set = new Set<string>()
+  ;(data || []).forEach((r: { confession_id: string; emoji: string }) => { set.add(`${r.confession_id}_${r.emoji}`) })
+  return set
+}
+
+export async function toggleReaction(confessionId: string, emoji: string, sessionId: string, currentlyReacted: boolean): Promise<void> {
+  if (currentlyReacted) {
+    await supabase.from('reactions').delete().match({ confession_id: confessionId, emoji, session_id: sessionId })
+  } else {
+    await supabase.from('reactions').insert({ confession_id: confessionId, emoji, session_id: sessionId })
+  }
+}
+
+function generateCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  let c = ''
+  for (let i = 0; i < 8; i++) { if (i === 4) c += '-'; c += chars[Math.floor(Math.random() * chars.length)] }
+  return c
+}
+
+export const MOOD_COLORS: Record<string, string> = {
+  '😶': '#6b7280', '😔': '#3b82f6', '😏': '#f59e0b', '🔥': '#f97316',
+  '😂': '#eab308', '🥺': '#ec4899', '😱': '#ef4444', '🫣': '#8b5cf6',
+}
+
+export const MOOD_LABELS: Record<string, string> = {
+  '😶': 'Neutral', '😔': 'Heavy', '😏': 'Petty', '🔥': 'Heated',
+  '😂': 'Funny', '🥺': 'Tender', '😱': 'Shocking', '🫣': 'Awkward',
+}
+
+export const MOODS = Object.entries(MOOD_LABELS).map(([emoji, label]) => ({ emoji, label }))
+
+const ANON_NAMES = ['Ghost','Shadow','Echo','Cipher','Mirage','Specter','Phantom','Wraith','Void','Myth']
+const ANON_COLORS = ['#f59e0b','#8b5cf6','#ef4444','#3b82f6','#22c55e','#ec4899','#f97316','#06b6d4']
+
+export function getAnon(seed: number) {
+  return {
+    name: ANON_NAMES[seed % ANON_NAMES.length],
+    color: ANON_COLORS[seed % ANON_COLORS.length],
+    letter: ANON_NAMES[seed % ANON_NAMES.length][0],
+    number: String(seed).slice(-3).padStart(3, '0'),
+  }
+}
+
+export function timeAgo(ts: string): string {
+  const diff = (Date.now() - new Date(ts).getTime()) / 1000
+  if (diff < 60) return 'just now'
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`
+  return `${Math.floor(diff/86400)}d ago`
 }

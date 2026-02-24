@@ -1,51 +1,133 @@
-"use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+'use client'
 
-export default function Home() {
-  const [code, setCode] = useState("");
-  const router = useRouter();
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createBoard, getBoardByCode } from '@/lib/supabase'
+
+export default function HomePage() {
+  const router = useRouter()
+  const [view, setView] = useState<'home' | 'create' | 'join'>('home')
+  const [boardName, setBoardName] = useState('')
+  const [joinCode, setJoinCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleCreate(e: React.FormEvent) {
+    e.preventDefault()
+    if (!boardName.trim()) return
+    setLoading(true); setError('')
+    try {
+      const board = await createBoard(boardName.trim())
+      router.push(`/board/${board.code}`)
+    } catch { setError('Something went wrong. Try again.'); setLoading(false) }
+  }
+
+  async function handleJoin(e: React.FormEvent) {
+    e.preventDefault()
+    const code = joinCode.trim().toUpperCase()
+    if (!code) return
+    setLoading(true); setError('')
+    try {
+      const board = await getBoardByCode(code)
+      if (!board) { setError('Board not found. Check the code.'); setLoading(false); return }
+      router.push(`/board/${board.code}`)
+    } catch { setError('Something went wrong. Try again.'); setLoading(false) }
+  }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] text-center">
-      <h1 className="text-6xl font-bold tracking-tighter mb-4 bg-gradient-to-b from-white to-white/40 bg-clip-text text-transparent italic">
-        whsipr
-      </h1>
-      <p className="text-zinc-400 mb-12 max-w-sm">
-        A private space for anonymous secrets. No accounts, no tracking, just whispers.
-      </p>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
 
-      <div className="grid gap-6 w-full max-w-sm">
-        {/* Join Board Section */}
-        <div className="p-6 rounded-2xl bg-surface border border-border transition-all hover:border-accent/50">
-          <input
-            type="text"
-            placeholder="Enter Board Code"
-            className="w-full p-3 rounded-xl mb-3 text-center font-mono uppercase tracking-widest"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <button 
-            onClick={() => code && router.push(`/board/${code}`)}
-            className="w-full bg-white text-black font-bold py-3 rounded-xl hover:bg-zinc-200 transition-colors"
-          >
-            Join Board
-          </button>
-        </div>
+      {/* Subtle top gradient */}
+      <div style={{ position: 'fixed', top: 0, left: 0, right: 0, height: '400px', background: 'radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 100%)', pointerEvents: 'none' }} />
 
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border"></span></div>
-          <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-zinc-500 font-mono">Or</span></div>
-        </div>
+      <div style={{ width: '100%', maxWidth: '400px', animation: 'fadeIn 0.4s ease' }}>
 
-        {/* Create Board Section */}
-        <button 
-          onClick={() => router.push('/board/' + Math.random().toString(36).substring(2, 8))}
-          className="w-full border border-border py-4 rounded-2xl hover:bg-white/5 transition-all text-zinc-300 font-medium"
-        >
-          Create a New Board
-        </button>
+        {view === 'home' && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+
+            {/* Logo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '48px' }}>
+              <div style={{ width: '28px', height: '28px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', color: 'var(--text)' }}>w</span>
+              </div>
+              <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>whispr</span>
+            </div>
+
+            {/* Hero */}
+            <h1 style={{ fontSize: '48px', fontWeight: 700, lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: '16px', color: 'var(--text)' }}>
+              No more<br />
+              <span style={{ color: 'var(--text-tertiary)' }}>secrets.</span>
+            </h1>
+
+            <p style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.6, maxWidth: '300px', marginBottom: '40px' }}>
+              Anonymous confessions on a shared board. No gatekeeping. No selective screenshots.
+            </p>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '48px' }}>
+              <button className="btn-primary" onClick={() => setView('create')}>
+                Create a board
+              </button>
+              <button className="btn-secondary" onClick={() => setView('join')}>
+                Join with code
+              </button>
+            </div>
+
+            {/* Feature list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', borderTop: '1px solid var(--border)', paddingTop: '32px' }}>
+              {[
+                { icon: '🔒', text: 'Fully anonymous — no accounts needed' },
+                { icon: '⚡', text: 'Real-time — confessions appear instantly' },
+                { icon: '💬', text: 'Replies — respond to confessions' },
+                { icon: '↗', text: 'Share — post cards to social media' },
+              ].map(f => (
+                <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: '10px', textAlign: 'left' }}>
+                  <span style={{ fontSize: '14px' }}>{f.icon}</span>
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{f.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(view === 'create' || view === 'join') && (
+          <div style={{ animation: 'slideUp 0.25s ease' }}>
+            <button onClick={() => { setView('home'); setError('') }} className="btn-ghost" style={{ marginBottom: '24px', paddingLeft: 0 }}>
+              ← Back
+            </button>
+
+            <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: '16px', padding: '28px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: 600, letterSpacing: '-0.02em', marginBottom: '6px' }}>
+                {view === 'create' ? 'Create a board' : 'Join a board'}
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '24px' }}>
+                {view === 'create'
+                  ? 'Name your board, share the code, watch confessions roll in.'
+                  : 'Enter the invite code your group shared with you.'}
+              </p>
+
+              <form onSubmit={view === 'create' ? handleCreate : handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div>
+                  <label className="label" style={{ display: 'block', marginBottom: '6px' }}>
+                    {view === 'create' ? 'Board name' : 'Invite code'}
+                  </label>
+                  {view === 'create' ? (
+                    <input className="input" value={boardName} onChange={e => setBoardName(e.target.value)}
+                           placeholder="e.g. SSCE Class of '25" maxLength={40} autoFocus />
+                  ) : (
+                    <input className="input" value={joinCode} onChange={e => setJoinCode(e.target.value)}
+                           placeholder="e.g. W3IR-X9PK" maxLength={9} autoFocus
+                           style={{ fontFamily: "'Geist Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase' }} />
+                  )}
+                </div>
+                {error && <p style={{ fontSize: '13px', color: 'var(--red)' }}>{error}</p>}
+                <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.6 : 1 }}>
+                  {loading ? 'Loading...' : view === 'create' ? 'Create board' : 'Enter board'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
+  )
 }
