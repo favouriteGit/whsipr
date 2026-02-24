@@ -21,6 +21,7 @@ export default function BoardPage() {
   const [sort, setSort]             = useState('newest')
   const [loading, setLoading]       = useState(true)
   const [notFound, setNotFound]     = useState(false)
+  const [isExpired, setIsExpired]   = useState(false)
   const [showConfess, setShowConfess] = useState(false)
   const [showInvite, setShowInvite]   = useState(false)
   const [sharing, setSharing]       = useState<Confession | null>(null)
@@ -39,6 +40,9 @@ export default function BoardPage() {
       const b = await getBoardByCode(code)
       if (!b) { setNotFound(true); setLoading(false); return }
       setBoard(b)
+      if (b.expires_at && new Date(b.expires_at).getTime() < Date.now()) {
+        setIsExpired(true); setLoading(false); return
+      }
       const [c, r] = await Promise.all([getConfessions(b.id), getMyReactions(b.id, sid)])
       setConfessions(c); setMyReactions(r); setLiveCount(c.length)
     } catch { setNotFound(true) }
@@ -95,7 +99,7 @@ export default function BoardPage() {
     if (!board?.expires_at) { setTimeLeft(''); return }
     function tick() {
       const diff = new Date(board!.expires_at!).getTime() - Date.now()
-      if (diff <= 0) { setTimeLeft('EXPIRED'); return }
+      if (diff <= 0) { setTimeLeft('EXPIRED'); setIsExpired(true); return }
       const d = Math.floor(diff / 86400000)
       const h = Math.floor((diff % 86400000) / 3600000)
       const m = Math.floor((diff % 3600000) / 60000)
@@ -137,8 +141,18 @@ export default function BoardPage() {
   const dateStr   = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'-')
 
   /* ── Sidebar content shared between desktop + mobile ── */
-  const SidebarContent = ({ onClose }: { onClose?: () => void }) => (
+  const SidebarContent = ({ onClose, isMobile }: { onClose?: () => void; isMobile?: boolean }) => (
     <>
+      {/* Invite button — only shown inside mobile sheet */}
+      {isMobile && (
+        <>
+          <button onClick={() => { setShowInvite(true); onClose?.() }}
+                  style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: 'var(--paper)', border: 'none', cursor: 'pointer', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, letterSpacing: '0.08em', marginBottom: '12px' }}>
+            INVITE MEMBERS ↗
+          </button>
+          <div className="dash-line" style={{ marginBottom: '14px' }} />
+        </>
+      )}
       {/* Live receipt counter */}
       <div style={{ background: 'var(--ink)', color: 'var(--paper)', padding: '12px', marginBottom: '14px', textAlign: 'center' }}>
         <div style={{ fontSize: '10px', letterSpacing: '0.1em', color: 'rgba(245,242,235,0.5)', marginBottom: '4px' }}>RECEIPTS ISSUED</div>
@@ -221,6 +235,53 @@ export default function BoardPage() {
     </div>
   )
 
+  if (isExpired) return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '340px' }}>
+        <div className="receipt receipt-torn-top receipt-torn-bottom" style={{ padding: '28px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '0.15em', marginBottom: '4px' }}>WHISPR</div>
+          <div style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.08em', marginBottom: '16px' }}>ANONYMOUS CONFESSIONS CO.</div>
+
+          <div className="dash-line" style={{ margin: '12px 0' }} />
+
+          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🧾</div>
+          <p style={{ fontWeight: 700, fontSize: '14px', letterSpacing: '0.15em', marginBottom: '4px' }}>BOARD EXPIRED</p>
+          <p style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.06em', lineHeight: 1.7, marginBottom: '16px' }}>
+            THIS BOARD HAS REACHED ITS EXPIRY DATE.<br />ALL CONFESSIONS HAVE BEEN PERMANENTLY DELETED.
+          </p>
+
+          <div className="dash-line" style={{ margin: '12px 0' }} />
+
+          <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', textAlign: 'left' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--ink-3)' }}>BOARD</span>
+              <span style={{ fontWeight: 600 }}>{board?.name?.toUpperCase() || '—'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--ink-3)' }}>CODE</span>
+              <span style={{ fontWeight: 600, letterSpacing: '0.1em' }}>{code}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--ink-3)' }}>STATUS</span>
+              <span style={{ fontWeight: 700, color: '#cc0000' }}>VOID</span>
+            </div>
+          </div>
+
+          <div className="dash-line" style={{ margin: '12px 0' }} />
+
+          <a href="/" className="btn-primary" style={{ display: 'block', textAlign: 'center', textDecoration: 'none', padding: '11px', marginBottom: '12px' }}>
+            OPEN NEW BOARD
+          </a>
+
+          <div style={{ fontSize: '10px', color: 'var(--ink-4)', lineHeight: 1.8, letterSpacing: '0.06em' }}>
+            <div>** THIS RECEIPT IS VOID **</div>
+            <div style={{ marginTop: '6px', letterSpacing: '0.15em' }}>|||||| ||| || |||| ||| | ||||</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ minHeight: '100vh' }}>
 
@@ -229,26 +290,28 @@ export default function BoardPage() {
         <div style={{ maxWidth: '1100px', margin: '0 auto', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
             <button onClick={() => setMobileSheet(true)} id="mobile-menu-btn"
-                    style={{ background: 'none', border: '1px solid rgba(245,242,235,0.2)', color: 'rgba(245,242,235,0.6)', padding: '4px 8px', fontSize: '12px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', display: 'none' }}>☰</button>
+                    style={{ background: 'none', border: '1px solid rgba(245,242,235,0.2)', color: 'rgba(245,242,235,0.6)', padding: '4px 8px', fontSize: '12px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', display: 'none', flexShrink: 0 }}>☰</button>
             <a href="/" style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: '16px', color: 'var(--paper)', textDecoration: 'none', letterSpacing: '0.1em', flexShrink: 0 }}>WHISPR</a>
-            <span style={{ color: 'rgba(245,242,235,0.25)', fontSize: '14px' }}>|</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            {/* Board name + live dot — hidden on mobile */}
+            <span className="header-desktop" style={{ color: 'rgba(245,242,235,0.25)', fontSize: '14px' }}>|</span>
+            <div className="header-desktop" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
               <span className="anim-blink" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(245,242,235,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>{board?.name.toUpperCase()}</span>
             </div>
-            {/* Presence pill in header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', padding: '3px 8px', flexShrink: 0 }}>
+            {/* Presence pill — hidden on mobile */}
+            <div className="header-desktop" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', padding: '3px 8px', flexShrink: 0 }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#4ade80', display: 'block' }} />
               <span style={{ fontSize: '10px', color: 'rgba(74,222,128,0.9)', letterSpacing: '0.06em', fontWeight: 600 }}>{presence} ONLINE</span>
             </div>
-            {/* Live receipt counter */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(245,242,235,0.06)', border: '1px solid rgba(245,242,235,0.12)', padding: '3px 8px', flexShrink: 0 }}>
+            {/* Receipt counter — hidden on mobile */}
+            <div className="header-desktop" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(245,242,235,0.06)', border: '1px solid rgba(245,242,235,0.12)', padding: '3px 8px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', color: 'rgba(245,242,235,0.35)', letterSpacing: '0.06em' }}>RCP</span>
               <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: newBadge ? '#4ade80' : 'rgba(245,242,235,0.75)', transition: 'color 0.4s' }}>#{String(liveCount).padStart(4,'0')}</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            <button onClick={() => setShowInvite(true)} style={{ background: 'transparent', border: '1px solid rgba(245,242,235,0.25)', color: 'rgba(245,242,235,0.65)', padding: '6px 12px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', letterSpacing: '0.06em' }}>INVITE</button>
+            {/* Invite — hidden on mobile, accessible via sidebar sheet */}
+            <button onClick={() => setShowInvite(true)} className="header-desktop" style={{ background: 'transparent', border: '1px solid rgba(245,242,235,0.25)', color: 'rgba(245,242,235,0.65)', padding: '6px 12px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', letterSpacing: '0.06em' }}>INVITE</button>
             <button onClick={() => setShowConfess(true)} style={{ background: 'var(--paper)', border: 'none', color: 'var(--ink)', padding: '6px 14px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', fontWeight: 700, letterSpacing: '0.06em' }}>+ POST</button>
           </div>
         </div>
@@ -312,7 +375,7 @@ export default function BoardPage() {
               <button onClick={() => setMobileSheet(false)} style={{ background: 'none', border: 'none', color: 'rgba(245,242,235,0.6)', cursor: 'pointer', fontSize: '12px', fontFamily: "'IBM Plex Mono',monospace" }}>✕ CLOSE</button>
             </div>
             <div style={{ padding: '16px' }}>
-              <SidebarContent onClose={() => setMobileSheet(false)} />
+              <SidebarContent onClose={() => setMobileSheet(false)} isMobile={true} />
             </div>
           </div>
         </>
@@ -374,6 +437,7 @@ export default function BoardPage() {
           #desktop-sidebar { display: none !important; }
           #mobile-menu-btn { display: flex !important; }
           #mobile-fab { display: block !important; }
+          .header-desktop { display: none !important; }
         }
       `}</style>
     </div>
