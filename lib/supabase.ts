@@ -6,13 +6,23 @@ export const supabase = createBrowserClient(
 )
 
 export type Board = {
-  id: string; name: string; code: string; created_at: string; member_count: number
+  id: string
+  name: string
+  code: string
+  created_at: string
+  expires_at: string | null
 }
 
 export type Confession = {
-  id: string; board_id: string; text: string; mood: string
-  anon_seed: number; created_at: string; reactions: Record<string, number>
+  id: string
+  board_id: string
+  text: string
+  mood: string
+  anon_seed: number
+  created_at: string
   image_url?: string
+  reactions: Record<string, number>
+  reply_count?: number
 }
 
 export function getSessionId(): string {
@@ -22,9 +32,16 @@ export function getSessionId(): string {
   return sid
 }
 
-export async function createBoard(name: string): Promise<Board> {
+export async function createBoard(name: string, expiryHours: number | null): Promise<Board> {
   const code = generateCode()
-  const { data, error } = await supabase.from('boards').insert({ name, code }).select().single()
+  const expires_at = expiryHours
+    ? new Date(Date.now() + expiryHours * 3600000).toISOString()
+    : null
+  const { data, error } = await supabase
+    .from('boards')
+    .insert({ name, code, expires_at })
+    .select()
+    .single()
   if (error) throw error
   return data
 }
@@ -45,7 +62,7 @@ export async function postConfession(boardId: string, text: string, mood: string
   if (imageUrl) payload.image_url = imageUrl
   const { data, error } = await supabase.from('confessions').insert(payload).select().single()
   if (error) throw error
-  return { ...data, reactions: {} }
+  return { ...data, reactions: {}, reply_count: 0 }
 }
 
 export async function getMyReactions(boardId: string, sessionId: string): Promise<Set<string>> {
@@ -87,7 +104,6 @@ const COLORS = ['#f59e0b','#8b5cf6','#ef4444','#3b82f6','#22c55e','#ec4899','#f9
 
 export function getAnon(seed: number) {
   return {
-    name:   NAMES[seed % NAMES.length],
     color:  COLORS[seed % COLORS.length],
     letter: NAMES[seed % NAMES.length][0],
     number: String(seed).slice(-3).padStart(3, '0'),
