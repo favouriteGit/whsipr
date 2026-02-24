@@ -12,6 +12,7 @@ export type Board = {
 export type Confession = {
   id: string; board_id: string; text: string; mood: string
   anon_seed: number; created_at: string; reactions: Record<string, number>
+  image_url?: string
 }
 
 export function getSessionId(): string {
@@ -39,8 +40,10 @@ export async function getConfessions(boardId: string): Promise<Confession[]> {
   return (data || []) as Confession[]
 }
 
-export async function postConfession(boardId: string, text: string, mood: string): Promise<Confession> {
-  const { data, error } = await supabase.from('confessions').insert({ board_id: boardId, text, mood }).select().single()
+export async function postConfession(boardId: string, text: string, mood: string, imageUrl?: string): Promise<Confession> {
+  const payload: Record<string, unknown> = { board_id: boardId, text, mood }
+  if (imageUrl) payload.image_url = imageUrl
+  const { data, error } = await supabase.from('confessions').insert(payload).select().single()
   if (error) throw error
   return { ...data, reactions: {} }
 }
@@ -72,12 +75,6 @@ export const MOOD_COLORS: Record<string, string> = {
   '😂': '#facc15', '🥺': '#f472b6', '😱': '#f87171', '🫣': '#a78bfa',
 }
 
-export const MOOD_BG: Record<string, string> = {
-  '😶': 'rgba(113,113,122,0.08)', '😔': 'rgba(96,165,250,0.08)', '😏': 'rgba(251,146,60,0.08)',
-  '🔥': 'rgba(249,115,22,0.08)', '😂': 'rgba(250,204,21,0.08)', '🥺': 'rgba(244,114,182,0.08)',
-  '😱': 'rgba(248,113,113,0.08)', '🫣': 'rgba(167,139,250,0.08)',
-}
-
 export const MOOD_LABELS: Record<string, string> = {
   '😶': 'Neutral', '😔': 'Heavy', '😏': 'Petty', '🔥': 'Heated',
   '😂': 'Funny', '🥺': 'Tender', '😱': 'Shocking', '🫣': 'Awkward',
@@ -85,13 +82,13 @@ export const MOOD_LABELS: Record<string, string> = {
 
 export const MOODS = Object.entries(MOOD_LABELS).map(([emoji, label]) => ({ emoji, label }))
 
-const NAMES = ['Ghost','Shadow','Echo','Cipher','Mirage','Specter','Phantom','Wraith','Void','Myth']
+const NAMES  = ['Ghost','Shadow','Echo','Cipher','Mirage','Specter','Phantom','Wraith','Void','Myth']
 const COLORS = ['#f59e0b','#8b5cf6','#ef4444','#3b82f6','#22c55e','#ec4899','#f97316','#06b6d4']
 
 export function getAnon(seed: number) {
   return {
-    name: NAMES[seed % NAMES.length],
-    color: COLORS[seed % COLORS.length],
+    name:   NAMES[seed % NAMES.length],
+    color:  COLORS[seed % COLORS.length],
     letter: NAMES[seed % NAMES.length][0],
     number: String(seed).slice(-3).padStart(3, '0'),
   }
@@ -100,7 +97,7 @@ export function getAnon(seed: number) {
 export function timeAgo(ts: string): string {
   const d = (Date.now() - new Date(ts).getTime()) / 1000
   if (d < 60) return 'just now'
-  if (d < 3600) return `${Math.floor(d/60)}m ago`
-  if (d < 86400) return `${Math.floor(d/3600)}h ago`
-  return `${Math.floor(d/86400)}d ago`
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`
+  return `${Math.floor(d / 86400)}d ago`
 }

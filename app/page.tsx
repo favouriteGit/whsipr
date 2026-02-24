@@ -17,7 +17,7 @@ export default function HomePage() {
     if (!boardName.trim()) return
     setLoading(true); setError('')
     try { const b = await createBoard(boardName.trim()); router.push(`/board/${b.code}`) }
-    catch { setError('Something went wrong.'); setLoading(false) }
+    catch { setError('ERROR: COULD NOT PROCESS'); setLoading(false) }
   }
 
   async function handleJoin(e: React.FormEvent) {
@@ -27,108 +27,151 @@ export default function HomePage() {
     setLoading(true); setError('')
     try {
       const b = await getBoardByCode(code)
-      if (!b) { setError('Board not found. Check the code.'); setLoading(false); return }
+      if (!b) { setError('ERROR: BOARD NOT FOUND'); setLoading(false); return }
       router.push(`/board/${b.code}`)
-    } catch { setError('Something went wrong.'); setLoading(false) }
+    } catch { setError('ERROR: COULD NOT PROCESS'); setLoading(false) }
   }
 
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '-')
+  const timeStr = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px' }}>
 
-      {/* Nav */}
-      <nav style={{ height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 24px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '28px', height: '28px', background: 'var(--accent)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 900, fontSize: '16px', color: '#fff' }}>w</span>
-          </div>
-          <span style={{ fontWeight: 700, fontSize: '15px', letterSpacing: '-0.01em' }}>whispr</span>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button className="btn-secondary" onClick={() => setView('join')} style={{ padding: '6px 14px', fontSize: '13px' }}>Join board</button>
-          <button className="btn-primary" onClick={() => setView('create')} style={{ padding: '6px 14px', fontSize: '13px' }}>Create board</button>
-        </div>
-      </nav>
-
-      {/* Home view */}
       {view === 'home' && (
-        <div className="anim-fade" style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', textAlign: 'center' }}>
+        <div style={{ width: '100%', maxWidth: '360px', animation: 'feedIn 0.4s ease' }}>
+          {/* Main receipt */}
+          <div className="receipt receipt-torn-top receipt-torn-bottom" style={{ padding: '28px 24px' }}>
 
-          {/* Pill */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '7px', padding: '5px 14px', background: 'var(--accent-3)', border: '1px solid var(--accent-2)', borderRadius: '99px', marginBottom: '32px' }}>
-            <span className="anim-blink" style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--green)', display: 'block' }} />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent)', letterSpacing: '0.04em' }}>LIVE · ANONYMOUS · FREE</span>
-          </div>
+            {/* Store header */}
+            <div className="thermal-center" style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '24px', fontWeight: 700, letterSpacing: '0.15em' }}>WHISPR</div>
+              <div style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.1em', marginTop: '2px' }}>ANONYMOUS CONFESSIONS CO.</div>
+              <div style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.05em' }}>EST. 2025 · whispr.name.ng</div>
+            </div>
 
-          <h1 style={{ fontSize: 'clamp(36px,6vw,72px)', fontWeight: 800, lineHeight: 1.08, letterSpacing: '-0.03em', marginBottom: '20px', maxWidth: '700px' }}>
-            Every confession,<br />
-            <span style={{ color: 'var(--text-3)' }}>seen by everyone.</span>
-          </h1>
+            <div className="dash-line" style={{ margin: '12px 0' }} />
 
-          <p style={{ fontSize: '16px', color: 'var(--text-2)', lineHeight: 1.65, maxWidth: '400px', marginBottom: '40px' }}>
-            A shared anonymous board for your group. No gatekeeping, no screenshots — everyone sees everything in real time.
-          </p>
+            {/* Receipt details */}
+            <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '12px' }}>
+              {[
+                ['DATE', dateStr],
+                ['TIME', timeStr],
+                ['TERMINAL', 'WEB-01'],
+                ['CASHIER', 'ANONYMOUS'],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--ink-3)' }}>{k}</span>
+                  <span style={{ color: 'var(--ink)', fontWeight: 500 }}>{v}</span>
+                </div>
+              ))}
+            </div>
 
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '72px' }}>
-            <button className="btn-primary" onClick={() => setView('create')} style={{ padding: '12px 28px', fontSize: '15px' }}>
-              Create a board →
-            </button>
-            <button className="btn-secondary" onClick={() => setView('join')} style={{ padding: '12px 28px', fontSize: '15px' }}>
-              Join with code
-            </button>
-          </div>
+            <div className="dash-line" style={{ margin: '12px 0' }} />
 
-          {/* Features */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: 'var(--r-xl)', overflow: 'hidden', maxWidth: '700px', width: '100%' }}>
-            {[
-              { title: 'Fully anonymous', desc: 'No accounts. No traces.', icon: '🔒' },
-              { title: 'Real-time', desc: 'Posts appear instantly.', icon: '⚡' },
-              { title: 'Replies', desc: 'Respond anonymously.', icon: '💬' },
-              { title: 'Share cards', desc: 'Post to social media.', icon: '↗' },
-            ].map(f => (
-              <div key={f.title} style={{ background: 'var(--bg-1)', padding: '22px 20px' }}>
-                <div style={{ fontSize: '20px', marginBottom: '8px' }}>{f.icon}</div>
-                <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '4px' }}>{f.title}</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-3)', lineHeight: 1.5 }}>{f.desc}</div>
+            {/* "Items" */}
+            <div style={{ fontSize: '11px', marginBottom: '12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '12px' }}>
+                <span>ITEM</span><span>QTY</span>
               </div>
-            ))}
+              {[
+                ['ANONYMOUS POST', '∞'],
+                ['REAL-TIME SYNC', '1'],
+                ['REPLY THREADS', '1'],
+                ['IMAGE ATTACH', '1'],
+                ['SOCIAL SHARE', '5'],
+              ].map(([item, qty]) => (
+                <div key={item} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{item}</span>
+                  <span style={{ fontWeight: 600 }}>{qty}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="dash-line" style={{ margin: '12px 0' }} />
+
+            {/* Subtotal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--ink-3)' }}>SUBTOTAL</span>
+              <span>FREE</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', marginBottom: '4px' }}>
+              <span style={{ color: 'var(--ink-3)' }}>ANONYMITY TAX</span>
+              <span>$0.00</span>
+            </div>
+            <div className="dash-line" style={{ margin: '8px 0' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700 }}>
+              <span>TOTAL</span>
+              <span>$0.00</span>
+            </div>
+
+            <div className="dash-line" style={{ margin: '16px 0' }} />
+
+            {/* CTA buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+              <button className="btn-primary" onClick={() => setView('create')} style={{ width: '100%', padding: '11px' }}>
+                [01] CREATE A BOARD
+              </button>
+              <button className="btn-secondary" onClick={() => setView('join')} style={{ width: '100%', padding: '11px' }}>
+                [02] JOIN WITH CODE
+              </button>
+            </div>
+
+            <div className="dash-line" style={{ margin: '12px 0' }} />
+
+            {/* Footer */}
+            <div className="thermal-center" style={{ fontSize: '10px', color: 'var(--ink-3)', lineHeight: 1.8 }}>
+              <div>** KEEP THIS RECEIPT **</div>
+              <div>THANK YOU FOR YOUR CONFESSION</div>
+              <div style={{ marginTop: '6px', letterSpacing: '0.15em' }}>|||||| ||| || |||| ||| | ||||</div>
+              <div style={{ marginTop: '4px', fontSize: '9px' }}>TXN#WSPRNG-{Math.floor(Math.random()*999999).toString().padStart(6,'0')}</div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Create / Join */}
       {(view === 'create' || view === 'join') && (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
-          <div className="anim-up" style={{ width: '100%', maxWidth: '380px' }}>
-            <button onClick={() => { setView('home'); setError('') }}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '13px', fontWeight: 500, marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Plus Jakarta Sans', sans-serif", padding: 0 }}>
-              ← Back
-            </button>
-            <div className="card" style={{ padding: '28px' }}>
-              <div style={{ width: '40px', height: '40px', background: 'var(--accent-3)', border: '1px solid var(--accent-2)', borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', fontSize: '18px' }}>
-                {view === 'create' ? '✦' : '→'}
+        <div style={{ width: '100%', maxWidth: '360px' }}>
+          <button onClick={() => { setView('home'); setError('') }}
+                  style={{ background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", marginBottom: '16px', letterSpacing: '0.05em', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            ← BACK
+          </button>
+
+          <div className="receipt" style={{ padding: '24px' }}>
+            <div className="thermal-center" style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 700, letterSpacing: '0.15em' }}>
+                {view === 'create' ? 'NEW BOARD' : 'JOIN BOARD'}
               </div>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '-0.02em', marginBottom: '6px' }}>
-                {view === 'create' ? 'Create a board' : 'Join a board'}
-              </h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.6, marginBottom: '22px' }}>
-                {view === 'create' ? 'Name it, share the code, let confessions begin.' : 'Enter the code your group shared with you.'}
-              </p>
-              <form onSubmit={view === 'create' ? handleCreate : handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label className="label" style={{ display: 'block', marginBottom: '6px' }}>
-                    {view === 'create' ? 'Board name' : 'Invite code'}
-                  </label>
-                  {view === 'create'
-                    ? <input className="input" value={boardName} onChange={e => setBoardName(e.target.value)} placeholder="e.g. SSCE Class of '25" maxLength={40} autoFocus />
-                    : <input className="input" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="e.g. W3IR-X9PK" maxLength={9} autoFocus
-                             style={{ fontFamily: "'SF Mono', monospace", letterSpacing: '0.15em', textTransform: 'uppercase' }} />
-                  }
-                </div>
-                {error && <p style={{ fontSize: '13px', color: 'var(--red)', fontWeight: 500 }}>{error}</p>}
-                <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', opacity: loading ? 0.6 : 1, padding: '10px' }}>
-                  {loading ? 'Loading...' : view === 'create' ? 'Create board' : 'Enter board'}
-                </button>
-              </form>
+              <div style={{ fontSize: '10px', color: 'var(--ink-3)', marginTop: '2px' }}>
+                {view === 'create' ? 'REGISTER NEW CONFESSION BOARD' : 'ACCESS EXISTING BOARD'}
+              </div>
+            </div>
+
+            <div className="dash-line" style={{ margin: '12px 0' }} />
+
+            <form onSubmit={view === 'create' ? handleCreate : handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label className="label" style={{ display: 'block', marginBottom: '6px' }}>
+                  {view === 'create' ? 'BOARD NAME' : 'INVITE CODE'}
+                </label>
+                {view === 'create'
+                  ? <input className="input" value={boardName} onChange={e => setBoardName(e.target.value)} placeholder="e.g. SSCE CLASS OF 25" maxLength={40} autoFocus />
+                  : <input className="input" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="e.g. W3IR-X9PK" maxLength={9} autoFocus style={{ letterSpacing: '0.2em', textTransform: 'uppercase' }} />
+                }
+              </div>
+              {error && (
+                <p style={{ fontSize: '11px', color: '#cc0000', fontWeight: 600, letterSpacing: '0.05em', border: '1px solid #cc0000', padding: '6px 10px' }}>{error}</p>
+              )}
+              <button type="submit" disabled={loading} className="btn-primary" style={{ width: '100%', opacity: loading ? 0.6 : 1 }}>
+                {loading ? 'PROCESSING...' : view === 'create' ? 'OPEN REGISTER' : 'ENTER BOARD'}
+              </button>
+            </form>
+
+            <div className="dash-line" style={{ margin: '16px 0' }} />
+            <div className="thermal-center" style={{ fontSize: '10px', color: 'var(--ink-4)' }}>
+              <div>NO ACCOUNT REQUIRED</div>
+              <div>100% ANONYMOUS</div>
             </div>
           </div>
         </div>

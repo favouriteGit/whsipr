@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { supabase, getAnon, timeAgo, type Confession, MOOD_COLORS, MOOD_LABELS, MOOD_BG } from '@/lib/supabase'
+import { supabase, getAnon, timeAgo, type Confession, MOOD_LABELS } from '@/lib/supabase'
 
 type Reply = { id: string; confession_id: string; text: string; anon_seed: number; created_at: string }
 
@@ -12,9 +12,7 @@ export default function RepliesThread({ confession: c, onClose }: { confession: 
   const [posting, setPosting] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const anon = getAnon(c.anon_seed)
-  const color = MOOD_COLORS[c.mood] || '#666'
-  const bg = MOOD_BG[c.mood] || 'transparent'
-  const moodLabel = MOOD_LABELS[c.mood] || ''
+  const moodLabel = MOOD_LABELS[c.mood] || 'NEUTRAL'
 
   useEffect(() => {
     supabase.from('replies').select('*').eq('confession_id', c.id).order('created_at', { ascending: true })
@@ -41,43 +39,44 @@ export default function RepliesThread({ confession: c, onClose }: { confession: 
 
   return (
     <div className="overlay anim-fade" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: 'var(--bg-1)', border: '1px solid var(--border-2)', borderRadius: 'var(--r-xl)', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', height: '85vh', maxHeight: '640px', animation: 'slideUp 0.25s cubic-bezier(0.16,1,0.3,1)', boxShadow: '0 24px 60px rgba(0,0,0,0.7)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--paper)', border: '1px solid var(--ink)', width: '100%', maxWidth: '480px', display: 'flex', flexDirection: 'column', height: '85vh', maxHeight: '620px', animation: 'slideUp 0.25s ease', boxShadow: '4px 4px 0 rgba(0,0,0,0.2)', overflow: 'hidden' }}>
 
         {/* Header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--ink-5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--ink)', color: 'var(--paper)', flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: 700 }}>Thread</h2>
-            <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '1px' }}>{replies.length} {replies.length === 1 ? 'reply' : 'replies'}</p>
+            <p style={{ fontSize: '12px', fontWeight: 700, letterSpacing: '0.1em' }}>REPLY THREAD</p>
+            <p style={{ fontSize: '10px', color: 'rgba(245,242,235,0.5)', marginTop: '1px', letterSpacing: '0.05em' }}>{replies.length} REPL{replies.length !== 1 ? 'IES' : 'Y'}</p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '18px', padding: '4px' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: '1px solid rgba(245,242,235,0.2)', color: 'rgba(245,242,235,0.7)', cursor: 'pointer', fontSize: '12px', fontFamily: "'IBM Plex Mono',monospace", padding: '4px 10px' }}>CLOSE</button>
         </div>
 
-        {/* Original */}
-        <div style={{ margin: '16px 20px 8px', padding: '14px', background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', borderLeft: `3px solid ${color}`, flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: `${anon.color}18`, border: `1.5px solid ${anon.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: anon.color, fontFamily: 'monospace' }}>{anon.letter}</div>
-            <span className="mono" style={{ color: 'var(--text-3)' }}>Anon #{anon.number}</span>
-            <span className="badge" style={{ color, borderColor: `${color}25`, background: bg, fontSize: '10px', marginLeft: 'auto' }}>{moodLabel}</span>
+        {/* Original confession */}
+        <div style={{ margin: '14px 16px', padding: '12px', background: 'var(--paper-2)', border: '1px solid var(--ink-5)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--ink-3)', marginBottom: '6px' }}>
+            <span>ANON: {anon.letter}{anon.number}</span>
+            <span>MOOD: {moodLabel.toUpperCase()}</span>
           </div>
-          <p style={{ fontSize: '13px', lineHeight: 1.65, color: 'var(--text)' }}>{c.text}</p>
+          <div className="dash-line" style={{ marginBottom: '8px' }} />
+          <p style={{ fontSize: '12px', lineHeight: 1.65, color: 'var(--ink)' }}>{c.text}</p>
         </div>
+
+        <div className="dash-line" style={{ margin: '0 16px' }} />
 
         {/* Replies */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 20px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {loading && <p style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', padding: '20px' }}>Loading...</p>}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '10px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {loading && <p style={{ fontSize: '11px', color: 'var(--ink-3)', textAlign: 'center', padding: '20px', letterSpacing: '0.05em' }}>LOADING...</p>}
           {!loading && replies.length === 0 && (
-            <p style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', padding: '32px 0' }}>No replies yet. Be the first.</p>
+            <p style={{ fontSize: '11px', color: 'var(--ink-4)', textAlign: 'center', padding: '32px 0', letterSpacing: '0.05em' }}>NO REPLIES YET — BE FIRST</p>
           )}
           {replies.map(r => {
             const a = getAnon(r.anon_seed)
             return (
-              <div key={r.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', padding: '12px', animation: 'cardIn 0.2s ease' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '7px' }}>
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: `${a.color}18`, border: `1.5px solid ${a.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: 700, color: a.color, fontFamily: 'monospace' }}>{a.letter}</div>
-                  <span className="mono" style={{ color: 'var(--text-3)', fontSize: '10px' }}>Anon #{a.number}</span>
-                  <span className="mono" style={{ color: 'var(--text-4)', fontSize: '10px', marginLeft: 'auto' }}>{timeAgo(r.created_at)}</span>
+              <div key={r.id} style={{ background: 'var(--paper-2)', border: '1px solid var(--ink-5)', padding: '10px 12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--ink-3)', marginBottom: '6px' }}>
+                  <span>ANON: {a.letter}{a.number}</span>
+                  <span>{timeAgo(r.created_at).toUpperCase()}</span>
                 </div>
-                <p style={{ fontSize: '13px', lineHeight: 1.6, color: 'var(--text)' }}>{r.text}</p>
+                <p style={{ fontSize: '12px', lineHeight: 1.6, color: 'var(--ink)' }}>{r.text}</p>
               </div>
             )
           })}
@@ -85,10 +84,17 @@ export default function RepliesThread({ confession: c, onClose }: { confession: 
         </div>
 
         {/* Input */}
-        <form onSubmit={post} style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: '8px', flexShrink: 0 }}>
-          <input className="input" value={text} onChange={e => setText(e.target.value)} placeholder="Reply anonymously..." maxLength={300} autoFocus style={{ flex: 1, padding: '9px 12px', borderRadius: 'var(--r-md)' }} />
-          <button type="submit" disabled={posting || !text.trim()} className="btn-primary" style={{ padding: '9px 14px', opacity: posting || !text.trim() ? 0.5 : 1 }}>↑</button>
-        </form>
+        <div style={{ borderTop: '1px solid var(--ink-5)', flexShrink: 0 }}>
+          <form onSubmit={post} style={{ display: 'flex' }}>
+            <input className="input" value={text} onChange={e => setText(e.target.value)}
+                   placeholder="TYPE REPLY..." maxLength={300} autoFocus
+                   style={{ flex: 1, borderRadius: 0, border: 'none', borderRight: '1px solid var(--ink-5)', fontSize: '12px' }} />
+            <button type="submit" disabled={posting || !text.trim()} className="btn-primary"
+                    style={{ borderRadius: 0, padding: '10px 16px', opacity: posting || !text.trim() ? 0.5 : 1, flexShrink: 0 }}>
+              {posting ? '...' : 'POST'}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   )

@@ -1,55 +1,116 @@
 'use client'
 
 import { useState } from 'react'
-import { type Confession, getAnon, MOOD_COLORS, MOOD_LABELS } from '@/lib/supabase'
+import { type Confession, getAnon, MOOD_LABELS } from '@/lib/supabase'
 
 const SOCIALS = [
-  { key: 'twitter',   name: 'X / Twitter', color: '#1d9bf0', bg: '#000',    grad: ['#000000','#0a1628'] },
-  { key: 'instagram', name: 'Instagram',   color: '#e1306c', bg: '#0a0010', grad: ['#0a0010','#1a0020'] },
-  { key: 'whatsapp',  name: 'WhatsApp',    color: '#25d366', bg: '#001a0d', grad: ['#001a0d','#002a15'] },
-  { key: 'tiktok',    name: 'TikTok',      color: '#ff0050', bg: '#000',    grad: ['#000000','#0d0010'] },
-  { key: 'threads',   name: 'Threads',     color: '#e4e4e7', bg: '#0a0a0a', grad: ['#0a0a0a','#141414'] },
+  { key: 'twitter',   name: 'X / TWITTER', color: '#1d9bf0' },
+  { key: 'whatsapp',  name: 'WHATSAPP',    color: '#25d366' },
+  { key: 'threads',   name: 'THREADS',     color: '#e4e4e7' },
+  { key: 'instagram', name: 'INSTAGRAM',   color: '#e1306c' },
+  { key: 'tiktok',    name: 'TIKTOK',      color: '#ff0050' },
 ]
 
 export default function ShareCard({ confession: c, boardName, onClose }: { confession: Confession; boardName: string; onClose: () => void }) {
   const [sel, setSel] = useState(SOCIALS[0])
   const [downloading, setDownloading] = useState(false)
   const anon = getAnon(c.anon_seed)
-  const color = MOOD_COLORS[c.mood] || '#888'
-  const moodLabel = MOOD_LABELS[c.mood] || ''
+  const moodLabel = MOOD_LABELS[c.mood] || 'NEUTRAL'
 
-  function drawCard(s: typeof SOCIALS[0]): HTMLCanvasElement {
+  function drawCard(): HTMLCanvasElement {
     const canvas = document.createElement('canvas')
-    canvas.width = 1080; canvas.height = 1080
+    canvas.width = 800; canvas.height = 1000
     const ctx = canvas.getContext('2d')!
-    const g = ctx.createLinearGradient(0,0,1080,1080)
-    g.addColorStop(0, s.grad[0]); g.addColorStop(1, s.grad[1])
-    ctx.fillStyle = g; ctx.fillRect(0,0,1080,1080)
-    for (let i = 0; i < 5000; i++) { ctx.fillStyle = `rgba(255,255,255,${Math.random()*.02})`; ctx.fillRect(Math.random()*1080,Math.random()*1080,1,1) }
-    ctx.strokeStyle = s.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.3; ctx.strokeRect(40,40,1000,1000); ctx.globalAlpha = 1
-    ctx.font = 'italic bold 26px Georgia,serif'; ctx.fillStyle = 'rgba(255,255,255,0.2)'; ctx.textAlign = 'center'; ctx.fillText('whispr', 540, 100)
-    ctx.font = 'bold 14px monospace'; ctx.fillStyle = s.color; ctx.fillText(moodLabel.toUpperCase(), 540, 200)
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(100,230); ctx.lineTo(980,230); ctx.stroke()
-    const words = c.text.split(' '); const fs = c.text.length > 200 ? 36 : c.text.length > 100 ? 44 : 52
-    ctx.font = `italic ${fs}px Georgia,serif`; ctx.fillStyle = '#f4f4f5'; ctx.textAlign = 'center'
-    let line = ''; const lines: string[] = []
-    for (const w of words) { const t = line+w+' '; if (ctx.measureText(t).width > 880 && line) { lines.push(line.trim()); line = w+' ' } else line = t }
+
+    // Paper background
+    ctx.fillStyle = '#f5f2eb'; ctx.fillRect(0, 0, 800, 1000)
+
+    // Noise texture
+    for (let i = 0; i < 8000; i++) {
+      ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.018})`
+      ctx.fillRect(Math.random() * 800, Math.random() * 1000, 1, 1)
+    }
+
+    // Border
+    ctx.strokeStyle = '#1a1a18'; ctx.lineWidth = 2; ctx.strokeRect(20, 20, 760, 960)
+    ctx.strokeStyle = '#1a1a18'; ctx.lineWidth = 1; ctx.strokeRect(28, 28, 744, 944)
+
+    const cx = 400
+    ctx.fillStyle = '#1a1a18'
+    ctx.font = 'bold 32px "IBM Plex Mono", monospace'
+    ctx.textAlign = 'center'; ctx.fillText('WHISPR', cx, 90)
+
+    ctx.font = '13px "IBM Plex Mono", monospace'
+    ctx.fillStyle = '#6b6b67'; ctx.fillText('ANONYMOUS CONFESSIONS CO.', cx, 114)
+    ctx.fillText('whispr.name.ng', cx, 134)
+
+    // Dashed line helper
+    function dashLine(y: number) {
+      ctx.save(); ctx.setLineDash([8, 8]); ctx.strokeStyle = '#1a1a18'; ctx.lineWidth = 1
+      ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(760, y); ctx.stroke(); ctx.restore()
+    }
+
+    dashLine(155)
+
+    // Meta
+    ctx.font = '13px "IBM Plex Mono", monospace'; ctx.textAlign = 'left'; ctx.fillStyle = '#6b6b67'
+    const meta = [
+      ['ANON', `${anon.letter}${anon.number}`],
+      ['MOOD', moodLabel.toUpperCase()],
+      ['BOARD', boardName.toUpperCase().slice(0,24)],
+    ]
+    meta.forEach(([k,v], i) => {
+      ctx.fillStyle = '#6b6b67'; ctx.fillText(k, 50, 185 + i * 24)
+      ctx.fillStyle = '#1a1a18'; ctx.textAlign = 'right'; ctx.fillText(v, 750, 185 + i * 24)
+      ctx.textAlign = 'left'
+    })
+
+    dashLine(270)
+
+    // Confession text
+    ctx.font = 'italic 22px Georgia, serif'; ctx.fillStyle = '#1a1a18'; ctx.textAlign = 'center'
+    const words = c.text.split(' '); let line = ''; const lines: string[] = []
+    for (const w of words) {
+      const t = line + w + ' '
+      if (ctx.measureText(t).width > 680 && line) { lines.push(line.trim()); line = w + ' ' }
+      else line = t
+    }
     lines.push(line.trim())
-    const sy = 540 - (lines.length*(fs*1.4))/2
-    lines.forEach((l,i) => ctx.fillText(l, 540, sy+i*fs*1.4))
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(100,860); ctx.lineTo(980,860); ctx.stroke()
-    ctx.font = '16px monospace'; ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.textAlign = 'left'; ctx.fillText(`Anon #${anon.number} · ${boardName}`, 100, 910)
-    ctx.fillStyle = s.color; ctx.textAlign = 'right'; ctx.fillText('whispr.name.ng', 980, 910)
+    const startY = 370 - (lines.length * 34) / 2
+    lines.forEach((l, i) => ctx.fillText(l, cx, startY + i * 34))
+
+    dashLine(740)
+
+    // Footer
+    ctx.font = '12px "IBM Plex Mono", monospace'; ctx.fillStyle = '#9b9b96'; ctx.textAlign = 'center'
+    ctx.fillText('** KEEP THIS RECEIPT **', cx, 775)
+    ctx.fillText('THANK YOU FOR YOUR CONFESSION', cx, 797)
+
+    // Barcode simulation
+    const barY = 820; const barH = 60
+    const barWidths = [2,1,3,2,1,2,3,1,2,1,3,2,1,3,2,1,2,3,1,2,1,2,3,1,2,3,1,2]
+    let bx = 220
+    barWidths.forEach((w, i) => {
+      if (i % 2 === 0) { ctx.fillStyle = '#1a1a18'; ctx.fillRect(bx, barY, w * 3, barH) }
+      bx += w * 3
+    })
+    ctx.font = '11px "IBM Plex Mono", monospace'; ctx.fillStyle = '#6b6b67'
+    ctx.fillText(`TXN#WSPR-${c.id.slice(-8).toUpperCase()}`, cx, barY + barH + 18)
+
     return canvas
   }
 
   function download() {
     setDownloading(true)
-    setTimeout(() => { const cv = drawCard(sel); const l = document.createElement('a'); l.download = `whispr-${sel.key}.png`; l.href = cv.toDataURL('image/png'); l.click(); setDownloading(false) }, 100)
+    setTimeout(() => {
+      const cv = drawCard()
+      const l = document.createElement('a'); l.download = 'whispr-receipt.png'; l.href = cv.toDataURL('image/png'); l.click()
+      setDownloading(false)
+    }, 100)
   }
 
   function share() {
-    const t = `"${c.text}" — anonymous on whispr.name.ng`
+    const t = `"${c.text}" — posted anonymously on whispr.name.ng`
     if (sel.key === 'twitter') window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(t)}`)
     else if (sel.key === 'whatsapp') window.open(`https://wa.me/?text=${encodeURIComponent(t)}`)
     else if (sel.key === 'threads') window.open(`https://www.threads.net/intent/post?text=${encodeURIComponent(t)}`)
@@ -58,51 +119,56 @@ export default function ShareCard({ confession: c, boardName, onClose }: { confe
 
   return (
     <div className="overlay anim-fade" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="modal anim-up" style={{ maxWidth: '480px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+      <div className="modal anim-up" style={{ maxWidth: '460px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
-            <h2 style={{ fontSize: '17px', fontWeight: 700 }}>Share confession</h2>
-            <p style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '2px' }}>Pick a platform</p>
+            <p style={{ fontWeight: 700, fontSize: '13px', letterSpacing: '0.1em' }}>SHARE RECEIPT</p>
+            <p className="label" style={{ marginTop: '2px' }}>SELECT PLATFORM</p>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer', fontSize: '16px', fontFamily: "'IBM Plex Mono',monospace" }}>✕</button>
         </div>
 
-        {/* Platform tabs */}
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '2px' }}>
+        <div className="dash-line" style={{ marginBottom: '14px' }} />
+
+        {/* Platform list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px' }}>
           {SOCIALS.map(s => (
             <button key={s.key} onClick={() => setSel(s)}
-                    style={{ padding: '6px 12px', borderRadius: 'var(--r-md)', fontSize: '12px', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: "'Plus Jakarta Sans',sans-serif", transition: 'all 0.15s', background: sel.key === s.key ? 'var(--bg-3)' : 'transparent', border: `1px solid ${sel.key === s.key ? 'var(--border-2)' : 'var(--border)'}`, color: sel.key === s.key ? 'var(--text)' : 'var(--text-3)' }}>
-              {s.name}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: `1px solid ${sel.key === s.key ? 'var(--ink)' : 'var(--ink-5)'}`, background: sel.key === s.key ? 'var(--ink)' : 'transparent', color: sel.key === s.key ? 'var(--paper)' : 'var(--ink-3)', cursor: 'pointer', fontFamily: "'IBM Plex Mono',monospace", fontSize: '11px', letterSpacing: '0.06em', textAlign: 'left', width: '100%', transition: 'all 0.1s' }}>
+              <span>{s.name}</span>
+              {sel.key === s.key && <span>✓ SELECTED</span>}
             </button>
           ))}
         </div>
 
-        {/* Preview */}
-        <div style={{ borderRadius: 'var(--r-lg)', overflow: 'hidden', border: '1px solid var(--border-2)', marginBottom: '16px', aspectRatio: '1', background: `linear-gradient(135deg, ${sel.grad[0]}, ${sel.grad[1]})`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', boxShadow: `0 0 24px ${sel.color}20` }}>
-          <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '12px', color: 'rgba(255,255,255,0.2)', marginBottom: '10px', letterSpacing: '0.2em' }}>whispr</p>
-          <p style={{ fontSize: '11px', color: sel.color, letterSpacing: '0.15em', marginBottom: '14px', fontFamily: 'monospace', textTransform: 'uppercase' }}>{moodLabel}</p>
-          <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '14px' }} />
-          <p style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: '14px', color: '#f4f4f5', lineHeight: 1.65, overflow: 'hidden', maxHeight: '100px' }}>{c.text}</p>
-          <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.06)', marginTop: '14px', marginBottom: '10px' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace' }}>Anon #{anon.number}</span>
-            <span style={{ fontSize: '10px', color: sel.color, fontFamily: 'monospace' }}>whispr.name.ng</span>
+        <div className="dash-line" style={{ marginBottom: '14px' }} />
+
+        {/* Receipt preview */}
+        <div style={{ background: 'var(--paper-2)', border: '1px solid var(--ink-5)', padding: '16px', fontFamily: "'IBM Plex Mono',monospace", fontSize: '11px', lineHeight: 1.8, marginBottom: '14px' }}>
+          <div style={{ textAlign: 'center', fontWeight: 700, letterSpacing: '0.15em', marginBottom: '6px' }}>WHISPR</div>
+          <div className="dash-line" style={{ marginBottom: '8px' }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-3)' }}>
+            <span>ANON</span><span>#{anon.number}</span>
           </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--ink-3)' }}>
+            <span>MOOD</span><span>{moodLabel.toUpperCase()}</span>
+          </div>
+          <div className="dash-line" style={{ margin: '8px 0' }} />
+          <p style={{ fontStyle: 'italic', color: 'var(--ink)', lineHeight: 1.6, fontSize: '12px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical' as const }}>
+            &ldquo;{c.text}&rdquo;
+          </p>
+          <div className="dash-line" style={{ margin: '8px 0' }} />
+          <div style={{ textAlign: 'center', color: 'var(--ink-4)', fontSize: '10px' }}>whispr.name.ng</div>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={download} disabled={downloading} className="btn-secondary" style={{ flex: 1, opacity: downloading ? 0.5 : 1 }}>
-            {downloading ? 'Generating...' : '↓ Download'}
+            {downloading ? 'GENERATING...' : '↓ DOWNLOAD'}
           </button>
           <button onClick={share} className="btn-primary" style={{ flex: 1 }}>
-            {sel.key === 'instagram' || sel.key === 'tiktok' ? 'Save & Post' : 'Share →'}
+            {sel.key === 'instagram' || sel.key === 'tiktok' ? 'SAVE & POST' : 'SHARE →'}
           </button>
         </div>
-        {(sel.key === 'instagram' || sel.key === 'tiktok') && (
-          <p style={{ fontSize: '11px', color: 'var(--text-3)', textAlign: 'center', marginTop: '8px' }}>
-            {sel.name} doesn't support direct links — save and post manually
-          </p>
-        )}
       </div>
     </div>
   )
