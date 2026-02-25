@@ -3,880 +3,651 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WHISPR</title>
+<title>WHISPR — Feature Motion</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html,body { width:100%; height:100%; overflow:hidden; background:#111110; font-family:'IBM Plex Mono',monospace; }
-
-/* ── INTRO OVERLAY ── */
-#intro {
-  position:fixed; inset:0; z-index:9999;
-  background:#111110; color:#f5f2eb;
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
-  overflow:hidden;
-}
-
-/* grid paper */
-#intro::before {
-  content:''; position:absolute; inset:0; pointer-events:none;
-  background-image:
-    linear-gradient(rgba(245,242,235,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(245,242,235,0.03) 1px, transparent 1px);
-  background-size:28px 28px;
-}
-
-/* noise */
-#intro::after {
-  content:''; position:absolute; inset:0; pointer-events:none; opacity:0.04;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* ── SKIP BUTTON ── */
-#skip-btn {
-  position:fixed; top:24px; right:24px; z-index:10000;
-  background:transparent; border:1px solid rgba(245,242,235,0.25);
-  color:rgba(245,242,235,0.5); padding:8px 16px;
-  font-family:'IBM Plex Mono',monospace; font-size:11px;
-  letter-spacing:0.1em; cursor:pointer;
-  transition:all 0.2s; display:none;
-}
-#skip-btn:hover { background:rgba(245,242,235,0.1); color:rgba(245,242,235,0.8); }
-#skip-btn.show { display:block; animation:fadeIn 0.5s ease; }
-
-/* ── SCENE CONTAINER ── */
-#scene {
-  position:relative; z-index:1;
-  width:100%; max-width:480px; padding:0 24px;
-  display:flex; flex-direction:column; align-items:center;
-}
-
-/* ── RECEIPT ── */
-.receipt {
-  background:#f5f2eb; color:#1a1a18;
-  border:1px solid #1a1a18; /* use ink color for border */
-  padding:24px 22px;
-  width:100%; position:relative;
-  box-shadow:4px 4px 0 rgba(0,0,0,0.4), 8px 8px 0 rgba(0,0,0,0.2);
-}
-.receipt.dark-card { background:#1a1a18; color:#f5f2eb; border-color:#f5f2eb; }
-
-.torn-top::before {
-  content:''; position:absolute; top:-9px; left:0; right:0; height:9px;
-  background:#f5f2eb;
-  clip-path:polygon(0% 100%,2% 0%,4% 100%,6% 0%,8% 100%,10% 0%,12% 100%,14% 0%,16% 100%,18% 0%,20% 100%,22% 0%,24% 100%,26% 0%,28% 100%,30% 0%,32% 100%,34% 0%,36% 100%,38% 0%,40% 100%,42% 0%,44% 100%,46% 0%,48% 100%,50% 0%,52% 100%,54% 0%,56% 100%,58% 0%,60% 100%,62% 0%,64% 100%,66% 0%,68% 100%,70% 0%,72% 100%,74% 0%,76% 100%,78% 0%,80% 100%,82% 0%,84% 100%,86% 0%,88% 100%,90% 0%,92% 100%,94% 0%,96% 100%,98% 0%,100% 100%);
-}
-.torn-bottom::after {
-  content:''; position:absolute; bottom:-9px; left:0; right:0; height:9px;
-  background:#f5f2eb;
-  clip-path:polygon(0% 0%,2% 100%,4% 0%,6% 100%,8% 0%,10% 100%,12% 0%,14% 100%,16% 0%,18% 100%,20% 0%,22% 100%,24% 0%,26% 100%,28% 0%,30% 100%,32% 0%,34% 100%,36% 0%,38% 100%,40% 0%,42% 100%,44% 0%,46% 100%,48% 0%,50% 100%,52% 0%,54% 100%,56% 0%,58% 100%,60% 0%,62% 100%,64% 0%,66% 100%,68% 0%,70% 100%,72% 0%,74% 100%,76% 0%,78% 100%,80% 0%,82% 100%,84% 0%,86% 100%,88% 0%,90% 100%,92% 0%,94% 100%,96% 0%,98% 100%,100% 0%);
-}
-
-.dash { height:1px; background:repeating-linear-gradient(to right,#1a1a18 0,#1a1a18 5px,transparent 5px,transparent 10px); margin:10px 0; }
-.dash.light { background:repeating-linear-gradient(to right,#f5f2eb 0,#f5f2eb 5px,transparent 5px,transparent 10px); }
-
-/* ── TEXT ── */
-.mono { font-family:'IBM Plex Mono',monospace; }
-.label { font-size:9px; letter-spacing:0.12em; opacity:0.5; text-transform:uppercase; }
-.center { text-align:center; }
-
-/* ── SCENE STATES ── */
-.scene-block { display:none; width:100%; }
-.scene-block.active { display:flex; flex-direction:column; align-items:center; }
-
-/* ── PROGRESS BAR ── */
-#progress-container {
-  position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
-  width:min(320px, calc(100vw - 48px)); z-index:10000;
-  display:none;
-}
-#progress-container.show { display:block; }
-#progress-track {
-  height:2px; background:rgba(245,242,235,0.15); position:relative;
-}
-#progress-fill {
-  height:100%; background:rgba(245,242,235,0.5); width:0%;
-  transition:width 0.1s linear;
-}
-#progress-labels {
-  display:flex; justify-content:space-between;
-  margin-top:8px; font-size:9px; color:rgba(245,242,235,0.3); letter-spacing:0.08em;
-}
-
-/* ── ANIMATIONS ── */
-@keyframes fadeIn   { from{opacity:0} to{opacity:1} }
-@keyframes fadeOut  { from{opacity:1} to{opacity:0} }
-@keyframes slideUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
-@keyframes printIn  {
-  0%   { opacity:0; transform:translateY(-30px) scaleY(0.8); clip-path:inset(0 0 100% 0); }
-  40%  { opacity:1; transform:translateY(0) scaleY(1);       clip-path:inset(0 0 40% 0); }
-  100% { clip-path:inset(0 0 0% 0); }
-}
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-@keyframes scanline {
-  0%   { top:-10%; }
-  100% { top:110%; }
-}
-@keyframes glitch1 { 0%,100%{clip-path:inset(0 0 95% 0)} 50%{clip-path:inset(30% 0 50% 0)} }
-@keyframes glitch2 { 0%,100%{clip-path:inset(80% 0 0 0)} 50%{clip-path:inset(60% 0 20% 0)} }
-@keyframes countUp { from{opacity:0;transform:scale(0.8)} to{opacity:1;transform:scale(1)} }
-@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
-
-/* ── SCANLINE ── */
-.scanline {
-  position:absolute; left:0; right:0; height:3px;
-  background:linear-gradient(transparent, rgba(245,242,235,0.06), transparent);
-  animation:scanline 3s linear infinite; pointer-events:none; z-index:10;
-}
-
-/* ── TYPING CURSOR ── */
-.cursor { display:inline-block; width:2px; height:1em; background:#1a1a18; vertical-align:middle; animation:blink 0.7s step-end infinite; margin-left:1px; }
-.cursor.light { background:#f5f2eb; }
-
-/* ── REACTION CHIPS ── */
-.rxn-chip {
-  display:inline-flex; align-items:center; gap:3px;
-  padding:3px 8px; font-size:11px; border:1px solid;
-  font-family:'IBM Plex Mono',monospace; font-size:10px;
-  opacity:0; transform:scale(0.8);
-  transition:opacity 0.3s, transform 0.3s;
-}
-.rxn-chip.pop { opacity:1; transform:scale(1); }
-.rxn-chip.active { background:#1a1a18; color:#f5f2eb; border-color:#1a1a18; }
-.rxn-chip.inactive { background:transparent; color:#6b6b67; border-color:#c5c5bf; }
-
-/* ── PRESENCE DOTS ── */
-.p-dot {
-  width:8px; height:8px; border-radius:50%; background:#22c55e;
-  animation:pulse 2s ease infinite; display:inline-block;
-}
-
-/* ── TICKER ── */
-#ticker-wrap {
-  position:fixed; bottom:0; left:0; right:0; z-index:9998;
-  background:#f5f2eb; color:#1a1a18; padding:6px 0; overflow:hidden;
-  border-top:1px solid rgba(245,242,235,0.2); display:none;
-  font-size:10px; letter-spacing:0.1em;
-}
-#ticker-wrap.show { display:block; }
-#ticker-inner {
-  white-space:nowrap; display:inline-block;
-  animation:ticker 30s linear infinite;
-}
-
-/* ── TRANSITION ── */
-.scene-transition { animation:fadeIn 0.4s ease; }
-
-/* ── FINAL OVERLAY ── */
-#final-overlay {
-  position:fixed; inset:0; z-index:9998;
-  background:#f5f2eb; display:none;
-  align-items:center; justify-content:center;
-}
-#final-overlay.show { display:flex; animation:fadeIn 0.6s ease; }
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#111110;font-family:'IBM Plex Mono',monospace;color:#f5f2eb;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(245,242,235,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(245,242,235,0.03) 1px,transparent 1px);background-size:28px 28px;}
+body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:0.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+.scanline{position:fixed;left:0;right:0;height:3px;background:linear-gradient(transparent,rgba(245,242,235,0.05),transparent);animation:scan 5s linear infinite;pointer-events:none;z-index:5;}
+@keyframes scan{0%{top:-5%}100%{top:105%}}
+#start-screen{position:fixed;inset:0;z-index:100;background:#111110;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;text-align:center;padding:32px;}
+#start-screen h1{font-size:clamp(32px,8vw,64px);font-weight:700;letter-spacing:0.15em;}
+#start-screen p{font-size:11px;color:rgba(245,242,235,0.4);letter-spacing:0.1em;line-height:2;}
+#start-btn{padding:14px 36px;background:#f5f2eb;color:#111110;border:none;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;letter-spacing:0.1em;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;box-shadow:4px 4px 0 rgba(245,242,235,0.2);}
+#start-btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(245,242,235,0.25);}
+.start-note{font-size:9px;color:rgba(245,242,235,0.2);letter-spacing:0.08em;}
+#stage{position:fixed;inset:0;z-index:1;display:none;align-items:center;justify-content:center;}
+#stage.on{display:flex;}
+#skip-btn{position:fixed;top:20px;right:20px;z-index:50;background:transparent;border:1px solid rgba(245,242,235,0.2);color:rgba(245,242,235,0.4);padding:7px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.1em;cursor:pointer;transition:all 0.2s;display:none;}
+#skip-btn:hover{background:rgba(245,242,235,0.08);color:rgba(245,242,235,0.8);}
+#skip-btn.on{display:block;}
+#prog-wrap{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);width:min(360px,calc(100vw - 48px));z-index:50;display:none;}
+#prog-wrap.on{display:block;}
+#prog-track{height:1px;background:rgba(245,242,235,0.1);}
+#prog-fill{height:100%;background:rgba(245,242,235,0.5);width:0%;transition:width 0.3s ease;}
+#prog-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:rgba(245,242,235,0.25);letter-spacing:0.1em;}
+#ticker{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(245,242,235,0.04);border-top:1px solid rgba(245,242,235,0.07);padding:6px 0;overflow:hidden;display:none;font-size:9px;letter-spacing:0.12em;color:rgba(245,242,235,0.2);}
+#ticker.on{display:block;}
+#ticker-inner{white-space:nowrap;display:inline-block;animation:tick 45s linear infinite;}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#sw{position:relative;z-index:2;width:100%;max-width:560px;padding:0 24px;display:flex;flex-direction:column;align-items:center;}
+.sc{display:none;width:100%;flex-direction:column;align-items:center;text-align:center;}
+.sc.on{display:flex;animation:scIn 0.45s cubic-bezier(0.16,1,0.3,1);}
+@keyframes scIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.rc{background:#f5f2eb;color:#1a1a18;border:1px solid rgba(26,26,24,0.8);padding:22px 20px;width:100%;position:relative;box-shadow:4px 4px 0 rgba(0,0,0,0.5),8px 8px 0 rgba(0,0,0,0.25);}
+.torn-t::before{content:'';position:absolute;top:-9px;left:0;right:0;height:9px;background:#f5f2eb;clip-path:polygon(0% 100%,2% 0%,4% 100%,6% 0%,8% 100%,10% 0%,12% 100%,14% 0%,16% 100%,18% 0%,20% 100%,22% 0%,24% 100%,26% 0%,28% 100%,30% 0%,32% 100%,34% 0%,36% 100%,38% 0%,40% 100%,42% 0%,44% 100%,46% 0%,48% 100%,50% 0%,52% 100%,54% 0%,56% 100%,58% 0%,60% 100%,62% 0%,64% 100%,66% 0%,68% 100%,70% 0%,72% 100%,74% 0%,76% 100%,78% 0%,80% 100%,82% 0%,84% 100%,86% 0%,88% 100%,90% 0%,92% 100%,94% 0%,96% 100%,98% 0%,100% 100%);}
+.torn-b::after{content:'';position:absolute;bottom:-9px;left:0;right:0;height:9px;background:#f5f2eb;clip-path:polygon(0% 0%,2% 100%,4% 0%,6% 100%,8% 0%,10% 100%,12% 0%,14% 100%,16% 0%,18% 100%,20% 0%,22% 100%,24% 0%,26% 100%,28% 0%,30% 100%,32% 0%,34% 100%,36% 0%,38% 100%,40% 0%,42% 100%,44% 0%,46% 100%,48% 0%,50% 100%,52% 0%,54% 100%,56% 0%,58% 100%,60% 0%,62% 100%,64% 0%,66% 100%,68% 0%,70% 100%,72% 0%,74% 100%,76% 0%,78% 100%,80% 0%,82% 100%,84% 0%,86% 100%,88% 0%,90% 100%,92% 0%,94% 100%,96% 0%,98% 100%,100% 0%);}
+.dash{height:1px;background:repeating-linear-gradient(to right,#1a1a18 0,#1a1a18 5px,transparent 5px,transparent 10px);margin:10px 0;}
+.ldot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:ldp 2s ease infinite;}
+@keyframes ldp{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)}50%{box-shadow:0 0 0 7px rgba(34,197,94,0)}}
+.chip{display:inline-flex;align-items:center;gap:3px;padding:4px 9px;font-size:11px;border:1px solid;font-family:'IBM Plex Mono',monospace;opacity:0;transform:scale(0.8);transition:opacity 0.25s,transform 0.25s;}
+.chip.pop{opacity:1;transform:scale(1);}
+.chip.ink{background:#1a1a18;color:#f5f2eb;border-color:#1a1a18;}
+.chip.muted{color:#6b6b67;border-color:#c5c5bf;}
+.rbub{background:#ede9df;border:1px solid #c5c5bf;padding:8px 10px;margin-bottom:5px;font-size:11px;line-height:1.6;opacity:0;transform:translateX(-8px);transition:opacity 0.35s,transform 0.35s;text-align:left;}
+.rbub.on{opacity:1;transform:translateX(0);}
+.rbub .who{font-size:9px;color:#9b9b96;margin-bottom:3px;}
+.plat{display:flex;justify-content:space-between;padding:8px 10px;font-size:11px;border:1px solid #c5c5bf;margin-bottom:4px;transition:all 0.2s;}
+.plat.sel{background:#1a1a18;color:#f5f2eb;border-color:#1a1a18;}
+.stag{font-size:9px;color:rgba(245,242,235,0.3);letter-spacing:0.18em;margin-bottom:16px;text-transform:uppercase;}
+@keyframes countFlash{0%{color:#4ade80;transform:scale(1.08)}100%{color:#f5f2eb;transform:scale(1)}}
+#end-screen{position:fixed;inset:0;z-index:80;background:#f5f2eb;color:#1a1a18;display:none;align-items:center;justify-content:center;flex-direction:column;font-family:'IBM Plex Mono',monospace;}
+#end-screen.on{display:flex;animation:fadeIn 0.6s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>
+<div class="scanline"></div>
 
-<!-- ── TICKER ── -->
-<div id="ticker-wrap">
-  <div id="ticker-inner">
-    &nbsp;&nbsp;&nbsp; WHISPR · ANONYMOUS CONFESSIONS CO. · CREATE YOUR BOARD · SHARE THE CODE · YOUR GROUP CONFESSES · 100% ANONYMOUS · NO ACCOUNTS · NO TRACES · whispr.name.ng &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WHISPR · ANONYMOUS CONFESSIONS CO. · CREATE YOUR BOARD · SHARE THE CODE · YOUR GROUP CONFESSES · 100% ANONYMOUS · NO ACCOUNTS · NO TRACES · whispr.name.ng &nbsp;&nbsp;&nbsp;
+<div id="ticker"><div id="ticker-inner">
+  &nbsp;&nbsp;&nbsp;WHISPR · ANONYMOUS CONFESSIONS · NO ACCOUNTS · NO NAMES · NO TRACES · CREATE A BOARD · SHARE THE CODE · CONFESS FREELY · whispr.name.ng &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;WHISPR · ANONYMOUS CONFESSIONS · NO ACCOUNTS · NO NAMES · NO TRACES · CREATE A BOARD · SHARE THE CODE · CONFESS FREELY · whispr.name.ng &nbsp;&nbsp;&nbsp;
+</div></div>
+
+<div id="start-screen">
+  <h1>WHISPR</h1>
+  <p>A FULL FEATURE WALKTHROUGH<br>LO-FI BEAT + CLICK SOUNDS · 15 SCENES</p>
+  <button id="start-btn" onclick="boot()">&#9654; START</button>
+  <div class="start-note">BEST WITH HEADPHONES &middot; ~2 MINUTES</div>
+</div>
+
+<button id="skip-btn" onclick="goEnd()">SKIP &times;</button>
+<div id="prog-wrap">
+  <div id="prog-track"><div id="prog-fill"></div></div>
+  <div id="prog-meta"><span id="prog-label">INTRO</span><span id="prog-count">1 / 15</span></div>
+</div>
+
+<div id="stage">
+<div id="sw">
+
+<!-- S0 -->
+<div class="sc" id="s0">
+  <div id="s0-pre" style="font-size:10px;color:rgba(245,242,235,0.2);letter-spacing:0.2em;margin-bottom:28px;opacity:0;transition:opacity 0.6s;">YOUR GROUP HAS THINGS THEY WANT TO SAY.</div>
+  <div id="s0-logo" style="font-size:clamp(56px,12vw,92px);font-weight:700;letter-spacing:0.14em;opacity:0;transition:opacity 0.9s;line-height:1;">WHISPR</div>
+  <div id="s0-sub" style="font-size:10px;color:rgba(245,242,235,0.35);letter-spacing:0.18em;margin-top:10px;opacity:0;transition:opacity 0.6s;">ANONYMOUS CONFESSIONS CO.</div>
+  <div id="s0-tag" style="font-size:10px;color:rgba(245,242,235,0.18);letter-spacing:0.14em;margin-top:5px;opacity:0;transition:opacity 0.5s;">EST. 2025 &middot; whispr.name.ng</div>
+</div>
+
+<!-- S1 -->
+<div class="sc" id="s1">
+  <div class="stag">THE PROBLEM</div>
+  <div style="max-width:420px;">
+    <div id="s1a" style="font-size:clamp(20px,4vw,30px);font-weight:700;line-height:1.35;margin-bottom:12px;opacity:0;transition:opacity 0.5s,transform 0.5s;transform:translateY(8px);">Your group has thoughts they would never say out loud.</div>
+    <div id="s1b" style="font-size:clamp(18px,3.5vw,26px);font-weight:700;line-height:1.35;margin-bottom:14px;opacity:0;transition:opacity 0.5s,transform 0.5s;transform:translateY(8px);color:rgba(245,242,235,0.35);">Confessions. Opinions. Secrets. Tea.</div>
+    <div id="s1c" style="font-size:12px;color:rgba(245,242,235,0.45);line-height:1.9;opacity:0;transition:opacity 0.5s;">Whispr gives your group a private space to post anonymously. No accounts, no identities, no traces. Just raw honest confessions printed on a live thermal receipt board that everyone can read and react to.</div>
   </div>
 </div>
 
-<!-- ── SKIP ── -->
-<button id="skip-btn" onclick="skipIntro()">SKIP ✕</button>
-
-<!-- ── PROGRESS ── -->
-<div id="progress-container">
-  <div id="progress-track"><div id="progress-fill"></div></div>
-  <div id="progress-labels">
-    <span id="scene-label">INTRODUCING...</span>
-    <span id="scene-count">1 / 9</span>
+<!-- S2 -->
+<div class="sc" id="s2">
+  <div class="stag">HOW IT WORKS</div>
+  <div class="rc torn-t torn-b" style="max-width:400px;">
+    <div style="text-align:center;margin-bottom:12px;"><div style="font-size:18px;font-weight:700;letter-spacing:0.12em;">3 STEPS</div><div style="font-size:10px;color:#6b6b67;margin-top:2px;">THAT IS ALL IT TAKES</div></div>
+    <div class="dash"></div>
+    <div id="s2-steps" style="display:flex;flex-direction:column;gap:0;margin:8px 0;"></div>
+    <div class="dash"></div>
+    <div style="text-align:center;font-size:10px;color:#6b6b67;line-height:1.9;">NO SIGN UP &middot; NO EMAIL &middot; NO APP DOWNLOAD<br>WORKS ON ANY DEVICE &middot; BROWSER ONLY &middot; FREE FOREVER</div>
   </div>
 </div>
 
-<!-- ── INTRO ── -->
-<div id="intro">
-  <div class="scanline"></div>
-  <div id="scene">
-
-    <!-- S0: COLD OPEN -->
-    <div class="scene-block active" id="s0">
-      <div style="text-align:center;">
-        <div id="s0-text" style="font-size:11px; color:rgba(245,242,235,0.3); letter-spacing:0.15em; margin-bottom:24px; opacity:0;"></div>
-        <div id="s0-logo" style="font-size:72px; font-weight:700; letter-spacing:0.12em; opacity:0; line-height:1;">WHISPR</div>
-        <div id="s0-sub" style="font-size:10px; color:rgba(245,242,235,0.4); letter-spacing:0.15em; margin-top:8px; opacity:0;">ANONYMOUS CONFESSIONS CO.</div>
-      </div>
+<!-- S3 -->
+<div class="sc" id="s3">
+  <div class="stag">FEATURE 01 &mdash; ANONYMOUS POSTING</div>
+  <div class="rc torn-t torn-b" style="max-width:420px;">
+    <div style="text-align:center;margin-bottom:10px;"><div style="font-size:11px;color:#6b6b67;letter-spacing:0.08em;">WHISPR &middot; CONFESSION RECEIPT</div><div style="font-size:10px;color:#9b9b96;">TXN#7291-A4F2 &middot; BOARD: SS3-CLASS</div></div>
+    <div class="dash"></div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6b67;margin:6px 0;"><span>ANON: <strong style="color:#1a1a18;" id="s3-name">G247</strong></span><span>MOOD: &#128527; PETTY</span><span>JUST NOW</span></div>
+    <div class="dash"></div>
+    <div id="s3-text" style="font-size:14px;line-height:1.8;min-height:60px;margin:10px 0;font-style:italic;color:#1a1a18;"></div>
+    <div class="dash"></div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;">
+      <span style="padding:3px 8px;border:1px solid #1a1a18;background:#1a1a18;color:#f5f2eb;font-size:10px;">&#10084;&#65039; 4</span>
+      <span style="padding:3px 8px;border:1px solid #c5c5bf;font-size:10px;color:#6b6b67;">&#128128; 12</span>
+      <span style="padding:3px 8px;border:1px solid #c5c5bf;font-size:10px;color:#6b6b67;">&#128557; 3</span>
+      <span style="padding:3px 8px;border:1px solid #c5c5bf;font-size:10px;color:#6b6b67;margin-left:auto;">&#128172; 5 REPLIES</span>
     </div>
-
-    <!-- S1: THE PROBLEM -->
-    <div class="scene-block" id="s1">
-      <div style="text-align:center; max-width:380px;">
-        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:20px;">THE PROBLEM</div>
-        <div id="s1-line1" style="font-size:clamp(18px,4vw,28px); font-weight:700; line-height:1.3; margin-bottom:12px; opacity:0;">Your group has things<br>they want to say.</div>
-        <div id="s1-line2" style="font-size:clamp(18px,4vw,28px); font-weight:700; line-height:1.3; opacity:0; color:rgba(245,242,235,0.4);">But not out loud.</div>
-      </div>
+    <div style="margin-top:10px;padding:8px;background:#ede9df;border:1px solid #c5c5bf;">
+      <div style="font-size:9px;color:#6b6b67;margin-bottom:4px;letter-spacing:0.06em;">WHY IT IS SAFE</div>
+      <div style="font-size:10px;color:#3d3d3a;line-height:1.7;">No login &middot; Random alias assigned each session &middot; IP never stored &middot; No device fingerprint &middot; Zero identity data collected ever</div>
     </div>
-
-    <!-- S2: RECEIPT INTRO -->
-    <div class="scene-block" id="s2">
-      <div class="receipt torn-top torn-bottom" id="s2-receipt" style="opacity:0; transform:translateY(-20px) rotate(-1deg); max-width:320px; transition:all 0.6s cubic-bezier(0.16,1,0.3,1);">
-        <div class="center" style="margin-bottom:12px;">
-          <div style="font-size:18px; font-weight:700; letter-spacing:0.15em;">WHISPR</div>
-          <div class="label">ANONYMOUS CONFESSIONS CO.</div>
-        </div>
-        <div class="dash"></div>
-        <div id="s2-typed" style="font-size:13px; line-height:1.7; min-height:60px; margin:10px 0; font-style:italic;"></div>
-        <div class="dash"></div>
-        <div style="display:flex; justify-content:space-between; font-size:10px; color:#6b6b67; margin-top:8px;">
-          <span>ANON: G247</span>
-          <span>JUST NOW</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- S3: ANONYMOUS -->
-    <div class="scene-block" id="s3">
-      <div style="text-align:center; margin-bottom:24px; width:100%;">
-        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 01</div>
-        <div id="s3-title" style="font-size:clamp(20px,4vw,32px); font-weight:700; opacity:0;">100% Anonymous.</div>
-      </div>
-      <div class="receipt" style="max-width:340px; width:100%;">
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#f5f2eb; border:1px solid #e0dbd0;">
-            <span class="label" style="opacity:0.4;">POSTED BY</span>
-            <span id="s3-name" style="font-weight:700; font-size:13px;">???</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#f5f2eb; border:1px solid #e0dbd0;">
-            <span class="label" style="opacity:0.4;">IP ADDRESS</span>
-            <span style="font-weight:700;">???.???.???.???</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#f5f2eb; border:1px solid #e0dbd0;">
-            <span class="label" style="opacity:0.4;">DEVICE</span>
-            <span style="font-weight:700;">UNKNOWN</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#1a1a18; color:#f5f2eb;">
-            <span style="opacity:0.5; font-size:9px; letter-spacing:0.1em;">IDENTITY</span>
-            <span style="font-weight:700; letter-spacing:0.08em;" id="s3-identity">UNTRACEABLE</span>
-          </div>
-        </div>
-        <div class="dash" style="margin-top:12px;"></div>
-        <div style="text-align:center; font-size:10px; color:#6b6b67; margin-top:8px;">NO ACCOUNTS · NO NAMES · NO TRACES</div>
-      </div>
-    </div>
-
-    <!-- S4: LIVE -->
-    <div class="scene-block" id="s4">
-      <div style="text-align:center; margin-bottom:24px; width:100%;">
-        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 02 + 03</div>
-        <div style="font-size:clamp(20px,4vw,32px); font-weight:700;">Real-time. Live presence.</div>
-      </div>
-      <div class="receipt" style="max-width:340px; width:100%;">
-        <div style="background:#1a1a18; color:#f5f2eb; padding:12px 14px; margin:-24px -22px 16px; text-align:center;">
-          <div class="label" style="color:rgba(245,242,235,0.4); margin-bottom:4px;">RECEIPTS ISSUED</div>
-          <div style="font-size:42px; font-weight:700; letter-spacing:0.1em;" id="s4-counter">0000</div>
-          <div style="font-size:9px; color:rgba(245,242,235,0.3); margin-top:3px; letter-spacing:0.06em;">LIVE TOTAL</div>
-        </div>
-        <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #c5c5bf;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <span class="p-dot"></span>
-            <span style="font-size:10px; color:#6b6b67;">ONLINE NOW</span>
-          </div>
-          <span style="font-weight:700; font-size:14px;" id="s4-presence">1 PERSON</span>
-        </div>
-        <div style="margin-top:12px;" id="s4-feed">
-          <!-- posts appear here -->
-        </div>
-      </div>
-    </div>
-
-    <!-- S5: REACTIONS -->
-    <div class="scene-block" id="s5">
-      <div style="text-align:center; margin-bottom:24px; width:100%;">
-        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 04</div>
-        <div style="font-size:clamp(20px,4vw,32px); font-weight:700;">React. Anonymously.</div>
-      </div>
-      <div class="receipt" style="max-width:340px; width:100%;">
-        <div class="dash"></div>
-        <div style="font-size:13px; line-height:1.7; margin:10px 0; font-style:italic; color:#3d3d3a;">"My entire friend group knows I like them and nobody told me 💀"</div>
-        <div class="dash"></div>
-        <div id="s5-rxns" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:10px;">
-          <span class="rxn-chip active">❤️ <span id="rxn-heart">0</span></span>
-          <span class="rxn-chip active">💀 <span id="rxn-skull">0</span></span>
-          <span class="rxn-chip inactive">😭 <span id="rxn-cry">0</span></span>
-          <span class="rxn-chip inactive">😂 <span id="rxn-laugh">0</span></span>
-          <span class="rxn-chip inactive">🔥 <span id="rxn-fire">0</span></span>
-          <span class="rxn-chip inactive">👀 <span id="rxn-eyes">0</span></span>
-          <span class="rxn-chip inactive">🤯 <span id="rxn-mind">0</span></span>
-          <span class="rxn-chip inactive">🫂 <span id="rxn-hug">0</span></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- S6: EXPIRY + PASSWORD -->
-    <div class="scene-block" id="s6">
-      <div style="text-align:center; margin-bottom:20px; width:100%;">
-        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 07 + 08</div>
-        <div style="font-size:clamp(18px,3.5vw,28px); font-weight:700;">Self-destruct. Password lock.</div>
-      </div>
-      <div style="display:flex; gap:12px; width:100%; max-width:400px;">
-        <div class="receipt" style="flex:1;">
-          <div style="text-align:center; margin-bottom:8px;">
-            <div class="label">EXPIRES IN</div>
-            <div style="font-size:28px; font-weight:700; letter-spacing:0.1em; color:#f59e0b;" id="s6-timer">23:59:47</div>
-          </div>
-          <div class="dash"></div>
-          <div style="font-size:10px; color:#6b6b67; text-align:center; margin-top:8px; line-height:1.6;">ALL DATA DELETED<br>WHEN ZERO</div>
-        </div>
-        <div class="receipt" style="flex:1;">
-          <div style="text-align:center; margin-bottom:8px;">
-            <div class="label">PROTECTED</div>
-            <div style="font-size:24px; margin-top:4px;">🔒</div>
-          </div>
-          <div class="dash"></div>
-          <div style="display:flex; gap:4px; justify-content:center; margin-top:8px;" id="s6-dots">
-            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
-            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
-          </div>
-          <div style="font-size:10px; color:#6b6b67; text-align:center; margin-top:8px; line-height:1.6;">ONLY YOUR GROUP<br>CAN ENTER</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- S7: SHARE -->
-    <div class="scene-block" id="s7">
-      <div style="text-align:center; margin-bottom:24px; width:100%;">
-        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 09</div>
-        <div style="font-size:clamp(20px,4vw,32px); font-weight:700;">Share to any platform.</div>
-      </div>
-      <div class="receipt" style="max-width:340px; width:100%;">
-        <div style="font-size:13px; line-height:1.7; margin-bottom:12px; font-style:italic; color:#3d3d3a; padding-bottom:12px; border-bottom:1px dashed #c5c5bf;">"I've been pretending to like my best friend's cooking for 2 years"</div>
-        <div id="s7-platforms" style="display:flex; flex-direction:column; gap:4px;">
-          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-x">X / TWITTER</div>
-          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-wa">WHATSAPP</div>
-          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-ig">INSTAGRAM</div>
-          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-tt">TIKTOK</div>
-          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-th">THREADS</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- S8: FINALE -->
-    <div class="scene-block" id="s8">
-      <div class="receipt torn-top torn-bottom" style="max-width:340px; width:100%; text-align:center;">
-        <div style="font-size:32px; font-weight:700; letter-spacing:0.15em; margin-bottom:6px;">WHISPR</div>
-        <div class="label" style="margin-bottom:12px;">ANONYMOUS CONFESSIONS CO.</div>
-        <div class="dash"></div>
-        <div style="font-size:12px; line-height:2; color:#3d3d3a; margin:12px 0;">
-          ANONYMOUS POSTS<br>
-          REAL-TIME UPDATES<br>
-          LIVE PRESENCE<br>
-          REACTIONS & REPLIES<br>
-          IMAGE + VIDEO SUPPORT<br>
-          BOARD EXPIRY<br>
-          PASSWORD PROTECTION<br>
-          SOCIAL SHARE CARDS
-        </div>
-        <div class="dash"></div>
-        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:700; margin-top:10px;">
-          <span>TOTAL COST</span><span>$0.00</span>
-        </div>
-        <div class="dash" style="margin-top:10px;"></div>
-        <div id="s8-cta" style="margin-top:14px; padding:12px; background:#1a1a18; color:#f5f2eb; font-size:13px; font-weight:700; letter-spacing:0.1em; cursor:pointer; opacity:0; transition:opacity 0.4s;" onclick="skipIntro()">
-          CREATE YOUR BOARD →
-        </div>
-        <div style="margin-top:12px; font-size:10px; color:#9b9b96; letter-spacing:0.15em;">|||||| ||| || |||| ||| | ||||</div>
-        <div style="font-size:9px; color:#9b9b96; margin-top:4px;">whispr.name.ng</div>
-      </div>
-    </div>
-
   </div>
 </div>
 
-<!-- ── FINAL LANDING ── -->
-<div id="final-overlay">
-  <div style="text-align:center; padding:24px; font-family:'IBM Plex Mono',monospace;">
-    <div style="font-size:48px; font-weight:700; letter-spacing:0.12em; margin-bottom:8px;">WHISPR</div>
-    <div style="font-size:11px; color:#6b6b67; letter-spacing:0.1em; margin-bottom:32px;">ANONYMOUS CONFESSIONS CO.</div>
-    <div style="display:flex; flex-direction:column; gap:10px; max-width:280px; margin:0 auto;">
-      <a href="https://whispr.name.ng" style="display:block; padding:14px; background:#1a1a18; color:#f5f2eb; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.1em; text-align:center;">[01] CREATE A BOARD</a>
-      <a href="https://whispr.name.ng" style="display:block; padding:14px; background:transparent; color:#1a1a18; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.1em; text-align:center; border:1px solid #1a1a18;">[02] JOIN WITH CODE</a>
-      <button onclick="replayIntro()" style="padding:10px; background:transparent; border:1px dashed #c5c5bf; color:#9b9b96; font-family:'IBM Plex Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:0.08em;">▶ WATCH INTRO AGAIN</button>
+<!-- S4 -->
+<div class="sc" id="s4">
+  <div class="stag">FEATURE 01 &mdash; IDENTITY SYSTEM</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="text-align:center;margin-bottom:12px;font-size:13px;font-weight:700;letter-spacing:0.08em;">WHO ACTUALLY POSTED IT?</div>
+    <div class="dash"></div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin:10px 0;">
+      <div style="display:flex;justify-content:space-between;padding:9px 10px;background:#ede9df;border:1px solid #c5c5bf;font-size:11px;"><span style="color:#6b6b67;font-size:10px;">REAL NAME</span><span id="s4-name" style="font-weight:700;font-size:13px;transition:color 0.1s;">???</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 10px;background:#ede9df;border:1px solid #c5c5bf;font-size:11px;"><span style="color:#6b6b67;font-size:10px;">IP ADDRESS</span><span style="font-weight:700;">???.???.???.???</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 10px;background:#ede9df;border:1px solid #c5c5bf;font-size:11px;"><span style="color:#6b6b67;font-size:10px;">DEVICE</span><span style="font-weight:700;">UNKNOWN</span></div>
+      <div style="display:flex;justify-content:space-between;padding:9px 10px;background:#1a1a18;color:#f5f2eb;font-size:11px;"><span style="opacity:0.4;font-size:10px;letter-spacing:0.1em;">SHOWN AS</span><span style="font-weight:700;color:#22c55e;font-size:13px;">GHOST &middot; G247</span></div>
     </div>
+    <div class="dash"></div>
+    <div style="font-size:10px;color:#6b6b67;text-align:center;line-height:1.9;">10 RANDOM ALIASES &middot; GHOST &middot; SHADOW &middot; ECHO &middot; CIPHER<br>MIRAGE &middot; SPECTER &middot; PHANTOM &middot; WRAITH &middot; VOID &middot; MYTH<br>ALIAS CHANGES EVERY SESSION &middot; IMPOSSIBLE TO TRACK</div>
+  </div>
+</div>
+
+<!-- S5 -->
+<div class="sc" id="s5">
+  <div class="stag">FEATURE 02 &mdash; REAL-TIME FEED</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="background:#1a1a18;color:#f5f2eb;padding:14px 16px;margin:-22px -20px 14px;text-align:center;">
+      <div style="font-size:10px;color:rgba(245,242,235,0.4);letter-spacing:0.1em;margin-bottom:4px;">RECEIPTS ISSUED &mdash; BOARD: SS3</div>
+      <div style="font-size:52px;font-weight:700;letter-spacing:0.12em;font-variant-numeric:tabular-nums;" id="s5-count">0041</div>
+      <div style="font-size:9px;color:rgba(245,242,235,0.25);margin-top:3px;letter-spacing:0.08em;">UPDATES INSTANTLY &middot; NO REFRESH NEEDED</div>
+    </div>
+    <div style="font-size:10px;color:#6b6b67;margin-bottom:10px;padding:6px 0;border-bottom:1px dashed #c5c5bf;">POWERED BY SUPABASE REALTIME WEBSOCKETS &middot; ZERO DELAY</div>
+    <div id="s5-feed" style="display:flex;flex-direction:column;gap:5px;max-height:160px;overflow:hidden;"></div>
+  </div>
+</div>
+
+<!-- S6 -->
+<div class="sc" id="s6">
+  <div class="stag">FEATURE 03 &mdash; LIVE PRESENCE</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div><div style="font-size:13px;font-weight:700;margin-bottom:2px;">WHO IS IN THE ROOM?</div><div style="font-size:10px;color:#6b6b67;">LIVE &middot; UPDATES EVERY SECOND</div></div>
+      <div style="text-align:right;"><span class="ldot"></span><span style="font-size:18px;font-weight:700;margin-left:6px;" id="s6-count">1</span><div style="font-size:9px;color:#6b6b67;" id="s6-lbl">PERSON ONLINE</div></div>
+    </div>
+    <div class="dash"></div>
+    <div id="s6-list" style="display:flex;flex-direction:column;gap:4px;margin:8px 0;"></div>
+    <div class="dash"></div>
+    <div style="font-size:10px;color:#6b6b67;line-height:1.9;text-align:center;">TRACKED VIA SUPABASE REALTIME PRESENCE CHANNELS<br>COMPLETELY ANONYMOUS &middot; ONLY A COUNT IS SHOWN<br>CREATES ENERGY &middot; YOUR GROUP KNOWS THE ROOM IS ACTIVE</div>
+  </div>
+</div>
+
+<!-- S7 -->
+<div class="sc" id="s7">
+  <div class="stag">FEATURE 04 &mdash; REACTIONS</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="font-size:13px;line-height:1.8;font-style:italic;color:#3d3d3a;padding-bottom:10px;border-bottom:1px dashed #c5c5bf;margin-bottom:10px;">"My entire friend group knew I liked them for 6 months and nobody told me &#128128;"</div>
+    <div style="font-size:10px;color:#6b6b67;margin-bottom:8px;">10 REACTION TYPES &middot; ANONYMOUS &middot; ONE PER PERSON PER POST</div>
+    <div id="s7-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px;"></div>
+    <div class="dash"></div>
+    <div style="font-size:10px;color:#6b6b67;line-height:1.9;text-align:center;">TOP 3 SHOWN BY DEFAULT &middot; EXPAND TO SEE ALL 10<br>COUNTS UPDATE LIVE FOR EVERYONE ON THE BOARD<br>CLICK AGAIN TO UNREACT &middot; FULLY PRIVATE</div>
+  </div>
+</div>
+
+<!-- S8 -->
+<div class="sc" id="s8">
+  <div class="stag">FEATURE 05 &mdash; REPLY THREADS</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="font-size:13px;line-height:1.8;font-style:italic;color:#1a1a18;padding-bottom:10px;border-bottom:1px dashed #c5c5bf;margin-bottom:8px;">"I have been faking being okay for so long I forgot what actually okay feels like"</div>
+    <div style="font-size:10px;color:#6b6b67;margin-bottom:8px;">&#128172; 3 REPLIES &middot; EACH REPLY IS ALSO FULLY ANONYMOUS</div>
+    <div id="s8-replies"></div>
+    <div class="dash" style="margin-top:8px;"></div>
+    <div style="font-size:10px;color:#6b6b67;line-height:1.9;text-align:center;">REPLY COUNT SHOWN ON CARD BEFORE OPENING<br>NESTED THREADS &middot; FULLY ANONYMOUS &middot; REAL-TIME UPDATES<br>REPLY TO CONFESSIONS WITHOUT REVEALING YOURSELF</div>
+  </div>
+</div>
+
+<!-- S9 -->
+<div class="sc" id="s9">
+  <div class="stag">FEATURE 06 &mdash; IMAGE AND VIDEO</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="font-size:13px;line-height:1.8;font-style:italic;color:#1a1a18;margin-bottom:10px;">"Evidence attached &#128071;"</div>
+    <div style="border:1px solid #c5c5bf;height:100px;background:#e8e4db;position:relative;overflow:hidden;margin-bottom:10px;">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;"><div style="font-size:22px;opacity:0.2;">&#128247;</div><div style="font-size:9px;color:#9b9b96;letter-spacing:0.1em;">GRAYSCALE FILTERED &middot; RIGHT-CLICK DISABLED</div></div>
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,0.025) 0,rgba(0,0,0,0.025) 1px,transparent 1px,transparent 5px);"></div>
+      <div style="position:absolute;bottom:5px;left:6px;background:rgba(26,26,24,0.7);color:#fff;padding:2px 7px;font-size:9px;letter-spacing:0.06em;">2.4MB</div>
+    </div>
+    <div style="height:4px;background:#e0dbd0;border:1px solid #c5c5bf;position:relative;overflow:hidden;margin-bottom:6px;">
+      <div id="s9-bar" style="position:absolute;top:0;left:0;height:100%;background:#1a1a18;width:0%;transition:width 0.15s linear;"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#6b6b67;margin-bottom:10px;"><span>IMAGES &middot; MP4 &middot; MOV &middot; WEBM</span><span id="s9-pct">UPLOADING... 0%</span></div>
+    <div class="dash"></div>
+    <div style="font-size:10px;color:#6b6b67;line-height:1.9;text-align:center;">MAX FILE SIZE: 50MB &middot; STORED ON SUPABASE STORAGE<br>LIVE PROGRESS BAR DURING UPLOAD &middot; FILE SIZE ON PREVIEW<br>VIDEOS PLAY INLINE ON CONFESSION CARD &middot; NO DOWNLOAD</div>
+  </div>
+</div>
+
+<!-- S10 -->
+<div class="sc" id="s10">
+  <div class="stag">FEATURE 07 &mdash; BOARD EXPIRY</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="background:#1a1a18;color:#f5f2eb;padding:14px;margin:-22px -20px 14px;text-align:center;">
+      <div style="font-size:10px;color:rgba(245,242,235,0.4);letter-spacing:0.1em;margin-bottom:5px;">THIS BOARD SELF-DESTRUCTS IN</div>
+      <div style="font-size:40px;font-weight:700;letter-spacing:0.12em;color:#f59e0b;font-variant-numeric:tabular-nums;" id="s10-timer">23:59:47</div>
+      <div style="font-size:9px;color:rgba(245,242,235,0.25);margin-top:4px;letter-spacing:0.06em;">ALL CONFESSIONS &middot; REPLIES &middot; REACTIONS &middot; MEDIA DELETE AT ZERO</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;padding:7px 9px;font-size:11px;border:1px solid #c5c5bf;color:#6b6b67;"><span>&#8734; NEVER EXPIRES</span><span>BOARD STAYS FOREVER</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 9px;font-size:11px;border:1px solid #1a1a18;background:#f5f2eb;font-weight:700;"><span>&#8987; 24 HOURS &#10003;</span><span>DELETES AFTER 1 DAY</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 9px;font-size:11px;border:1px solid #c5c5bf;color:#6b6b67;"><span>&#8987; 7 DAYS</span><span>DELETES AFTER 1 WEEK</span></div>
+      <div style="display:flex;justify-content:space-between;padding:7px 9px;font-size:11px;border:1px solid #c5c5bf;color:#6b6b67;"><span>&#8987; 30 DAYS</span><span>DELETES AFTER 1 MONTH</span></div>
+    </div>
+    <div class="dash"></div>
+    <div style="font-size:10px;color:#6b6b67;text-align:center;line-height:1.9;">SET AT BOARD CREATION &middot; CANNOT CHANGE AFTER<br>AUTOMATED CRON JOB RUNS EVERY 10 MINUTES<br>ZERO TRACE LEFT AFTER EXPIRY &middot; FULLY WIPED</div>
+  </div>
+</div>
+
+<!-- S11 -->
+<div class="sc" id="s11">
+  <div class="stag">FEATURE 08 &mdash; PASSWORD PROTECTION</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="text-align:center;margin-bottom:12px;"><div style="font-size:22px;margin-bottom:4px;">&#128274;</div><div style="font-size:14px;font-weight:700;letter-spacing:0.1em;">ACCESS RESTRICTED</div><div style="font-size:10px;color:#6b6b67;margin-top:2px;">BOARD: SS3-CLASS &middot; PASSWORD REQUIRED</div></div>
+    <div class="dash"></div>
+    <div style="font-size:10px;color:#6b6b67;margin:8px 0 6px;letter-spacing:0.06em;">ENTER PASSWORD</div>
+    <div style="display:flex;gap:6px;justify-content:center;margin:10px 0;" id="s11-dots"></div>
+    <div style="margin-top:4px;padding:2px 0;font-size:10px;color:#9b9b96;text-align:center;height:16px;" id="s11-status"></div>
+    <div class="dash" style="margin:10px 0;"></div>
+    <div id="s11-btn" style="padding:10px;background:#1a1a18;color:#f5f2eb;text-align:center;font-size:12px;font-weight:700;letter-spacing:0.1em;transition:background 0.3s;">ENTER BOARD &#8594;</div>
+    <div class="dash" style="margin:10px 0;"></div>
+    <div style="font-size:10px;color:#6b6b67;line-height:1.9;text-align:center;">PASSWORD HASHED WITH SHA-256 &middot; NEVER STORED AS PLAINTEXT<br>OPTIONAL FEATURE &middot; BOARDS CAN BE OPEN OR LOCKED<br>ACCESS REMEMBERED PER DEVICE &middot; ONE-TIME ENTRY</div>
+  </div>
+</div>
+
+<!-- S12 -->
+<div class="sc" id="s12">
+  <div class="stag">FEATURE 09 &mdash; SOCIAL SHARE CARDS</div>
+  <div class="rc" style="max-width:420px;">
+    <div style="font-size:13px;line-height:1.8;font-style:italic;color:#3d3d3a;padding-bottom:10px;border-bottom:1px dashed #c5c5bf;margin-bottom:10px;">"I pretended to have plans every weekend for a month just to avoid going out."</div>
+    <div style="font-size:10px;color:#6b6b67;margin-bottom:8px;">SELECT PLATFORM &middot; GENERATES A RECEIPT-STYLED PNG CARD</div>
+    <div id="s12-plats" style="display:flex;flex-direction:column;gap:3px;"></div>
+    <div class="dash" style="margin:10px 0;"></div>
+    <div style="display:flex;gap:6px;"><div style="flex:1;padding:9px;border:1px solid #c5c5bf;text-align:center;font-size:11px;color:#6b6b67;">&#8595; DOWNLOAD PNG</div><div style="flex:1;padding:9px;background:#1a1a18;color:#f5f2eb;text-align:center;font-size:11px;font-weight:700;">SHARE &#8594;</div></div>
+    <div class="dash" style="margin:10px 0;"></div>
+    <div style="font-size:10px;color:#6b6b67;text-align:center;line-height:1.9;">5 PLATFORMS &middot; EACH CARD SIZED FOR THAT APP<br>RECEIPT AESTHETIC PRESERVED ON ALL CARDS<br>SHARE ANY CONFESSION IN ONE TAP</div>
+  </div>
+</div>
+
+<!-- S13 -->
+<div class="sc" id="s13">
+  <div class="stag">FEATURE 10 + 11 &mdash; DARK MODE AND MOBILE</div>
+  <div style="display:flex;gap:12px;width:100%;max-width:460px;">
+    <div class="rc" style="flex:1;">
+      <div style="text-align:center;margin-bottom:8px;"><div style="font-size:18px;margin-bottom:4px;" id="s13-icon">&#9685;</div><div style="font-size:11px;font-weight:700;" id="s13-mode">DARK MODE</div></div>
+      <div class="dash"></div>
+      <div style="font-size:10px;color:#6b6b67;line-height:1.9;margin-top:8px;text-align:center;">TOGGLE IN HEADER<br>SAVES TO LOCALSTORAGE<br>APPLIES INSTANTLY<br>ENTIRE UI ADAPTS</div>
+      <div style="margin-top:10px;padding:8px;font-size:10px;text-align:center;transition:all 0.4s;border:1px solid #c5c5bf;" id="s13-preview"><span style="display:block;font-weight:700;letter-spacing:0.08em;">PREVIEW</span><span style="color:#6b6b67;">CURRENT: LIGHT</span></div>
+    </div>
+    <div class="rc" style="flex:1;">
+      <div style="text-align:center;margin-bottom:8px;"><div style="font-size:18px;margin-bottom:4px;">&#128241;</div><div style="font-size:11px;font-weight:700;">MOBILE READY</div></div>
+      <div class="dash"></div>
+      <div style="font-size:10px;color:#6b6b67;line-height:1.9;margin-top:8px;text-align:center;">BOTTOM SHEET MENU<br>FLOATING POST BTN<br>HEADER AUTO-HIDES<br>TOUCH OPTIMIZED</div>
+      <div style="margin-top:10px;padding:8px;background:#1a1a18;color:#f5f2eb;font-size:10px;text-align:center;"><span style="display:block;font-weight:700;letter-spacing:0.08em;">+ POST</span><span style="color:rgba(245,242,235,0.4);font-size:9px;">FLOATING ACTION BTN</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- S14 -->
+<div class="sc" id="s14">
+  <div class="rc torn-t torn-b" style="max-width:420px;text-align:center;">
+    <div style="font-size:26px;font-weight:700;letter-spacing:0.15em;margin-bottom:4px;">WHISPR</div>
+    <div style="font-size:10px;color:#6b6b67;letter-spacing:0.12em;margin-bottom:12px;">COMPLETE FEATURE RECEIPT</div>
+    <div class="dash"></div>
+    <div id="s14-list" style="text-align:left;margin:12px 0;display:flex;flex-direction:column;gap:0;"></div>
+    <div class="dash"></div>
+    <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin:10px 0;"><span>TOTAL COST</span><span>$0.00</span></div>
+    <div class="dash"></div>
+    <div id="s14-cta" style="margin-top:12px;padding:13px;background:#1a1a18;color:#f5f2eb;font-size:13px;font-weight:700;letter-spacing:0.1em;cursor:pointer;opacity:0;transition:opacity 0.5s;" onclick="goEnd()">CREATE YOUR BOARD &#8594;</div>
+    <div style="margin-top:10px;font-size:10px;color:#9b9b96;letter-spacing:0.15em;">|||||| ||| || |||| ||| | ||||</div>
+    <div style="font-size:9px;color:#9b9b96;margin-top:3px;">whispr.name.ng</div>
+  </div>
+</div>
+
+</div></div>
+
+<div id="end-screen">
+  <div style="text-align:center;padding:32px;max-width:360px;">
+    <div style="font-size:40px;font-weight:700;letter-spacing:0.15em;margin-bottom:6px;">WHISPR</div>
+    <div style="font-size:10px;color:#6b6b67;letter-spacing:0.1em;margin-bottom:28px;">ANONYMOUS CONFESSIONS CO.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+      <a href="https://whispr.name.ng" style="display:block;padding:13px;background:#1a1a18;color:#f5f2eb;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:0.1em;text-align:center;">[01] CREATE A BOARD</a>
+      <a href="https://whispr.name.ng" style="display:block;padding:13px;background:transparent;color:#1a1a18;text-decoration:none;font-size:12px;font-weight:700;letter-spacing:0.1em;text-align:center;border:1px solid #1a1a18;">[02] JOIN WITH CODE</a>
+      <button onclick="replay()" style="padding:10px;background:transparent;border:1px dashed #c5c5bf;color:#9b9b96;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;letter-spacing:0.08em;">&#9654; WATCH AGAIN</button>
+    </div>
+    <div style="font-size:10px;color:#9b9b96;letter-spacing:0.08em;">&copy; 2025 WHISPR &middot; ALL CONFESSIONS STAY ANONYMOUS</div>
   </div>
 </div>
 
 <script>
-// ─────────────────────────────────────────
-// WEB AUDIO ENGINE
-// ─────────────────────────────────────────
-let audioCtx = null
+var AC=null;
+function ac(){if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();return AC;}
 
-function getCtx() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
-  return audioCtx
-}
+function kick(t){try{var c=ac(),o=c.createOscillator(),g=c.createGain();o.frequency.setValueAtTime(180,t);o.frequency.exponentialRampToValueAtTime(40,t+0.08);g.gain.setValueAtTime(0.85,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.25);o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.3);}catch(e){}}
 
-// Thermal printer — narrow band noise burst
-function soundPrinter(duration = 0.3) {
-  try {
-    const ctx = getCtx()
-    const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate)
-    const data = buf.getChannelData(0)
-    for (let i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08))
-    }
-    const src    = ctx.createBufferSource()
-    const filter = ctx.createBiquadFilter()
-    const gain   = ctx.createGain()
-    filter.type = 'bandpass'; filter.frequency.value = 3200; filter.Q.value = 0.8
-    gain.gain.setValueAtTime(0.18, ctx.currentTime)
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
-    src.buffer = buf
-    src.connect(filter); filter.connect(gain); gain.connect(ctx.destination)
-    src.start(); src.stop(ctx.currentTime + duration)
-  } catch(e) {}
-}
+function snare(t){try{var c=ac(),buf=c.createBuffer(1,c.sampleRate*0.18,c.sampleRate),d=buf.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1;var src=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();f.type='highpass';f.frequency.value=2200;g.gain.setValueAtTime(0.3,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.18);src.buffer=buf;src.connect(f);f.connect(g);g.connect(c.destination);src.start(t);src.stop(t+0.2);var o=c.createOscillator(),og=c.createGain();o.type='triangle';o.frequency.setValueAtTime(220,t);o.frequency.exponentialRampToValueAtTime(180,t+0.05);og.gain.setValueAtTime(0.18,t);og.gain.exponentialRampToValueAtTime(0.001,t+0.08);o.connect(og);og.connect(c.destination);o.start(t);o.stop(t+0.1);}catch(e){}}
 
-// Keyboard click — short transient
-function soundKey() {
-  try {
-    const ctx  = getCtx()
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const now  = ctx.currentTime
-    osc.type = 'square'; osc.frequency.setValueAtTime(800, now)
-    osc.frequency.exponentialRampToValueAtTime(200, now + 0.04)
-    gain.gain.setValueAtTime(0.06, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(now); osc.stop(now + 0.05)
-  } catch(e) {}
-}
+function hat(t,v){v=v||0.12;try{var c=ac(),buf=c.createBuffer(1,c.sampleRate*0.04,c.sampleRate),d=buf.getChannelData(0);for(var i=0;i<d.length;i++)d[i]=Math.random()*2-1;var src=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain();f.type='highpass';f.frequency.value=8000;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.04);src.buffer=buf;src.connect(f);f.connect(g);g.connect(c.destination);src.start(t);src.stop(t+0.06);}catch(e){}}
 
-// Notification ding
-function soundDing() {
-  try {
-    const ctx  = getCtx()
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const now  = ctx.currentTime
-    osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now)
-    osc.frequency.exponentialRampToValueAtTime(900, now + 0.3)
-    gain.gain.setValueAtTime(0.12, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(now); osc.stop(now + 0.5)
-  } catch(e) {}
-}
+function bass(t,freq){freq=freq||80;try{var c=ac(),o=c.createOscillator(),g=c.createGain(),f=c.createBiquadFilter();o.type='sawtooth';o.frequency.value=freq;f.type='lowpass';f.frequency.value=280;f.Q.value=2;g.gain.setValueAtTime(0.45,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.32);o.connect(f);f.connect(g);g.connect(c.destination);o.start(t);o.stop(t+0.38);}catch(e){}}
 
-// Cash register — two tones
-function soundRegister() {
-  try {
-    const ctx = getCtx()
-    const now = ctx.currentTime
-    ;[880, 1320].forEach((freq, i) => {
-      const osc  = ctx.createOscillator()
-      const gain = ctx.createGain()
-      osc.type = 'sine'; osc.frequency.value = freq
-      gain.gain.setValueAtTime(0, now + i * 0.08)
-      gain.gain.linearRampToValueAtTime(0.15, now + i * 0.08 + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.3)
-      osc.connect(gain); gain.connect(ctx.destination)
-      osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.35)
-    })
-  } catch(e) {}
-}
+function click(){try{var c=ac(),o=c.createOscillator(),g=c.createGain(),n=c.currentTime;o.type='square';o.frequency.setValueAtTime(1100,n);o.frequency.exponentialRampToValueAtTime(300,n+0.035);g.gain.setValueAtTime(0.07,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.04);o.connect(g);g.connect(c.destination);o.start(n);o.stop(n+0.045);}catch(e){}}
 
-// Whoosh — sweep down
-function soundWhoosh() {
-  try {
-    const ctx  = getCtx()
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const now  = ctx.currentTime
-    osc.type = 'sawtooth'
-    osc.frequency.setValueAtTime(600, now)
-    osc.frequency.exponentialRampToValueAtTime(80, now + 0.25)
-    gain.gain.setValueAtTime(0.08, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(now); osc.stop(now + 0.3)
-  } catch(e) {}
-}
+function ding(freq){freq=freq||1100;try{var c=ac(),o=c.createOscillator(),g=c.createGain(),n=c.currentTime;o.type='sine';o.frequency.setValueAtTime(freq,n);o.frequency.exponentialRampToValueAtTime(freq*0.7,n+0.4);g.gain.setValueAtTime(0.1,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.55);o.connect(g);g.connect(c.destination);o.start(n);o.stop(n+0.6);}catch(e){}}
 
-// Tick — for countdown
-function soundTick() {
-  try {
-    const ctx  = getCtx()
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const now  = ctx.currentTime
-    osc.type = 'square'; osc.frequency.value = 1600
-    gain.gain.setValueAtTime(0.04, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(now); osc.stop(now + 0.02)
-  } catch(e) {}
-}
+function pop(){try{var c=ac(),o=c.createOscillator(),g=c.createGain(),n=c.currentTime;o.type='sine';o.frequency.setValueAtTime(350,n);o.frequency.exponentialRampToValueAtTime(700,n+0.07);g.gain.setValueAtTime(0.11,n);g.gain.exponentialRampToValueAtTime(0.001,n+0.1);o.connect(g);g.connect(c.destination);o.start(n);o.stop(n+0.12);}catch(e){}}
 
-// Pop — for reactions appearing
-function soundPop() {
-  try {
-    const ctx  = getCtx()
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    const now  = ctx.currentTime
-    osc.type = 'sine'; osc.frequency.setValueAtTime(400, now)
-    osc.frequency.exponentialRampToValueAtTime(700, now + 0.06)
-    gain.gain.setValueAtTime(0.1, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
-    osc.connect(gain); gain.connect(ctx.destination)
-    osc.start(now); osc.stop(now + 0.1)
-  } catch(e) {}
-}
-
-// ─────────────────────────────────────────
-// SCENE ENGINE
-// ─────────────────────────────────────────
-let currentScene = 0
-const totalScenes = 9
-let sceneTimeout = null
-let introActive = true
-
-const sceneLabels = [
-  'COLD OPEN','SETTING THE SCENE','YOUR CONFESSION','ANONYMOUS','LIVE & REAL-TIME','REACTIONS','EXPIRY & LOCK','SHARE CARDS','FULL FEATURE LIST'
-]
-
-function showScene(n) {
-  document.querySelectorAll('.scene-block').forEach(b => b.classList.remove('active'))
-  const block = document.getElementById('s' + n)
-  if (block) { block.classList.add('active'); block.classList.add('scene-transition') }
-
-  document.getElementById('scene-label').textContent = sceneLabels[n] || ''
-  document.getElementById('scene-count').textContent = (n+1) + ' / ' + totalScenes
-
-  const fill = ((n) / (totalScenes - 1)) * 100
-  document.getElementById('progress-fill').style.width = fill + '%'
-}
-
-function nextScene() {
-  currentScene++
-  if (currentScene >= totalScenes) { endIntro(); return }
-  showScene(currentScene)
-  runScene(currentScene)
-}
-
-function scheduleNext(ms) {
-  if (sceneTimeout) clearTimeout(sceneTimeout)
-  sceneTimeout = setTimeout(nextScene, ms)
-}
-
-// ─────────────────────────────────────────
-// SCENE RUNNERS
-// ─────────────────────────────────────────
-function runScene(n) {
-  if (!introActive) return
-  const runners = [runS0, runS1, runS2, runS3, runS4, runS5, runS6, runS7, runS8]
-  runners[n]?.()
-}
-
-// S0 — Cold open: WHISPR logo fades in
-function runS0() {
-  const text = document.getElementById('s0-text')
-  const logo = document.getElementById('s0-logo')
-  const sub  = document.getElementById('s0-sub')
-
-  setTimeout(() => {
-    text.style.opacity = '1'; text.style.transition = 'opacity 0.6s'
-    text.textContent = 'YOUR GROUP HAS SECRETS.'
-    soundPrinter(0.4)
-  }, 400)
-
-  setTimeout(() => {
-    logo.style.opacity = '1'; logo.style.transition = 'opacity 0.8s'
-    soundRegister()
-  }, 1200)
-
-  setTimeout(() => {
-    sub.style.opacity = '1'; sub.style.transition = 'opacity 0.6s'
-  }, 1800)
-
-  scheduleNext(3500)
-}
-
-// S1 — The problem
-function runS1() {
-  const l1 = document.getElementById('s1-line1')
-  const l2 = document.getElementById('s1-line2')
-
-  setTimeout(() => {
-    l1.style.opacity = '1'; l1.style.transition = 'opacity 0.6s, transform 0.6s'
-    l1.style.transform = 'translateY(0)'; soundPrinter(0.2)
-  }, 300)
-  setTimeout(() => {
-    l2.style.opacity = '1'; l2.style.transition = 'opacity 0.6s'
-    soundPrinter(0.2)
-  }, 1200)
-  scheduleNext(3200)
-}
-
-// S2 — Receipt prints in, confession types
-function runS2() {
-  const receipt = document.getElementById('s2-receipt')
-  const typed   = document.getElementById('s2-typed')
-
-  setTimeout(() => {
-    receipt.style.opacity = '1'; receipt.style.transform = 'translateY(0) rotate(0deg)'
-    soundPrinter(0.6)
-  }, 200)
-
-  const confession = 'I told my lecturer I had malaria. I was watching Netflix the whole time.'
-  setTimeout(() => {
-    let i = 0
-    const iv = setInterval(() => {
-      if (!introActive) { clearInterval(iv); return }
-      typed.textContent = confession.slice(0, i) + '|'
-      if (i % 3 === 0) soundKey()
-      i++
-      if (i > confession.length) {
-        clearInterval(iv)
-        typed.textContent = confession
-        soundDing()
-      }
-    }, 45)
-  }, 800)
-
-  scheduleNext(5500)
-}
-
-// S3 — Anonymous: identity revealed as unknown
-function runS3() {
-  const title    = document.getElementById('s3-title')
-  const nameEl   = document.getElementById('s3-name')
-  const identity = document.getElementById('s3-identity')
-
-  setTimeout(() => { title.style.opacity = '1'; title.style.transition = 'opacity 0.5s'; soundWhoosh() }, 200)
-
-  const fakeNames = ['VICTOR OCHE', 'SARAH K.', 'MICHAEL A.', 'TUNDE B.', 'ADAEZE N.']
-  let ni = 0
-  const glitch = setInterval(() => {
-    if (!introActive) { clearInterval(glitch); return }
-    nameEl.textContent = fakeNames[ni % fakeNames.length]
-    soundKey()
-    ni++
-  }, 120)
-
-  setTimeout(() => {
-    clearInterval(glitch)
-    nameEl.textContent = 'G247'
-    nameEl.style.color = '#22c55e'
-    soundDing()
-  }, 1800)
-
-  scheduleNext(4500)
-}
-
-// S4 — Live counter + presence
-function runS4() {
-  const counter  = document.getElementById('s4-counter')
-  const presence = document.getElementById('s4-presence')
-  const feed     = document.getElementById('s4-feed')
-  let count = 38, people = 1
-
-  const iv = setInterval(() => {
-    if (!introActive) { clearInterval(iv); return }
-    count++
-    counter.textContent = String(count).padStart(4, '0')
-    counter.style.color = '#4ade80'
-    soundDing()
-    setTimeout(() => counter.style.color = '', 400)
-
-    // Add post to feed
-    const posts = [
-      'I studied for 5 mins and guessed the rest.',
-      'I pretend to be busy so nobody calls me.',
-      '"I never got your message" was a lie.',
-    ]
-    if (count <= 41) {
-      const p = document.createElement('div')
-      p.style.cssText = 'font-size:11px; line-height:1.6; padding:6px 0; border-bottom:1px dashed #e0dbd0; color:#3d3d3a; font-style:italic; opacity:0; transition:opacity 0.4s;'
-      p.textContent = posts[count - 39] || ''
-      feed.appendChild(p)
-      setTimeout(() => p.style.opacity = '1', 50)
-      soundPrinter(0.3)
-    }
-
-    if (people < 4) { people++; presence.textContent = people + ' PEOPLE'; }
-  }, 1200)
-
-  scheduleNext(5500)
-}
-
-// S5 — Reactions pop in
-function runS5() {
-  const chips = document.querySelectorAll('.rxn-chip')
-  chips.forEach((c, i) => {
-    setTimeout(() => {
-      c.classList.add('pop')
-      soundPop()
-    }, i * 120 + 300)
-  })
-
-  // Animate counts up
-  const counts = { heart: 12, skull: 34, cry: 8, laugh: 5, fire: 7, eyes: 11, mind: 4, hug: 3 }
-  Object.entries(counts).forEach(([key, max]) => {
-    let n = 0
-    const el = document.getElementById('rxn-' + key)
-    const iv = setInterval(() => {
-      if (!introActive) { clearInterval(iv); return }
-      n = Math.min(n + Math.ceil(max / 12), max)
-      if (el) el.textContent = n
-      if (n >= max) clearInterval(iv)
-    }, 80)
-  })
-
-  scheduleNext(4500)
-}
-
-// S6 — Expiry + password
-function runS6() {
-  const timer = document.getElementById('s6-timer')
-  let secs = 86387
-  const iv = setInterval(() => {
-    if (!introActive) { clearInterval(iv); return }
-    secs--
-    const h = Math.floor(secs / 3600)
-    const m = Math.floor((secs % 3600) / 60)
-    const s = secs % 60
-    timer.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
-    soundTick()
-  }, 80)
-
-  // Password dots fill
-  const dots = document.querySelectorAll('#s6-dots > div')
-  dots.forEach((d, i) => {
-    setTimeout(() => {
-      d.style.background = '#1a1a18'; d.style.borderColor = '#1a1a18'
-      soundKey()
-    }, i * 150 + 600)
-  })
-
-  scheduleNext(4000)
-}
-
-// S7 — Share platforms cycle
-function runS7() {
-  const platforms = ['p-x','p-wa','p-ig','p-tt','p-th']
-  let ci = 0
-  const iv = setInterval(() => {
-    if (!introActive) { clearInterval(iv); return }
-    document.getElementById(platforms[(ci + platforms.length - 1) % platforms.length]).style.cssText = 'display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;'
-    const el = document.getElementById(platforms[ci])
-    el.style.cssText = 'display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #1a1a18; background:#1a1a18; color:#f5f2eb;'
-    el.innerHTML = el.textContent.trim() + ' <span style="opacity:0.6;">✓</span>'
-    soundKey()
-    ci = (ci + 1) % platforms.length
-  }, 600)
-
-  scheduleNext(4000)
-}
-
-// S8 — Finale
-function runS8() {
-  soundRegister()
-  setTimeout(() => {
-    document.getElementById('s8-cta').style.opacity = '1'
-  }, 800)
-
-  // Don't auto-advance — wait for user
-  document.getElementById('progress-fill').style.width = '100%'
-  document.getElementById('scene-count').textContent = '✓ DONE'
-}
-
-// ─────────────────────────────────────────
-// LIFECYCLE
-// ─────────────────────────────────────────
-function skipIntro() {
-  introActive = false
-  if (sceneTimeout) clearTimeout(sceneTimeout)
-  const intro = document.getElementById('intro')
-  intro.style.transition = 'opacity 0.5s'
-  intro.style.opacity = '0'
-  setTimeout(() => {
-    intro.style.display = 'none'
-    document.getElementById('final-overlay').classList.add('show')
-    document.getElementById('ticker-wrap').classList.remove('show')
-    document.getElementById('progress-container').classList.remove('show')
-    document.getElementById('skip-btn').classList.remove('show')
-    document.body.style.overflow = 'auto'
-    // Remember they've seen it
-    localStorage.setItem('whispr_intro_seen', '1')
-  }, 500)
-}
-
-function replayIntro() {
-  document.getElementById('final-overlay').classList.remove('show')
-  document.getElementById('intro').style.cssText = ''
-  document.body.style.overflow = 'hidden'
-  currentScene = 0
-  introActive = true
-  // Reset all scenes
-  document.querySelectorAll('.scene-block').forEach(b => b.classList.remove('active'))
-  showScene(0)
-  document.getElementById('skip-btn').classList.add('show')
-  document.getElementById('progress-container').classList.add('show')
-  document.getElementById('ticker-wrap').classList.add('show')
-  // Reset scene 3
-  document.getElementById('s3-name').style.color = ''
-  document.getElementById('s3-name').textContent = '???'
-  document.getElementById('s4-feed').innerHTML = ''
-  document.getElementById('s4-counter').textContent = '0000'
-  document.getElementById('s4-counter').style.color = ''
-  runScene(0)
-}
-
-// ─────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────
-window.addEventListener('load', () => {
-  const hasSeen = localStorage.getItem('whispr_intro_seen')
-
-  if (hasSeen) {
-    // Returning user — show landing directly with replay option
-    document.getElementById('intro').style.display = 'none'
-    document.getElementById('final-overlay').classList.add('show')
-    return
+// Lo-fi beat loop
+var beatStop=false, beatOn=false;
+var bassLine=[80,0,80,0,90,0,80,75];
+function startBeat(){
+  if(beatOn)return; beatOn=true; beatStop=false;
+  var bpm=82, step=60/bpm;
+  var c=ac(), bar=0;
+  function sched(st, b){
+    if(beatStop)return;
+    var i=b%8;
+    if(i===0||i===4)kick(st);
+    if(i===2||i===6)kick(st);
+    if(i===1||i===5)snare(st);
+    if(i===3||i===7)snare(st);
+    hat(st,0.09); hat(st+step*0.5,0.05);
+    var bf=bassLine[i]; if(bf)bass(st+step*0.02,bf);
+    var next=st+step;
+    var delay=Math.max(0,(next-c.currentTime-0.05)*1000);
+    setTimeout(function(){sched(next,b+1);},delay);
   }
+  sched(c.currentTime+0.1,0);
+}
+function stopBeat(){beatStop=true;beatOn=false;}
 
-  // First visit — auto-play
-  document.getElementById('skip-btn').classList.add('show')
-  document.getElementById('progress-container').classList.add('show')
-  document.getElementById('ticker-wrap').classList.add('show')
-  showScene(0)
+// Scene engine
+var TOTAL=15, cur=0, active=true, TOs=[];
+var labels=['COLD OPEN','THE PROBLEM','HOW IT WORKS','ANONYMOUS POSTING','IDENTITY SYSTEM','REAL-TIME FEED','LIVE PRESENCE','REACTIONS','REPLY THREADS','MEDIA UPLOADS','BOARD EXPIRY','PASSWORD LOCK','SHARE CARDS','DARK MODE + MOBILE','FULL RECAP'];
 
-  // Start on first interaction (browser requires gesture for audio)
-  let started = false
-  function start() {
-    if (started) return; started = true
-    document.removeEventListener('click', start)
-    document.removeEventListener('keydown', start)
-    runScene(0)
+function q(fn,ms){var t=setTimeout(fn,ms);TOs.push(t);}
+function clearAll(){TOs.forEach(clearTimeout);TOs=[];active=false;}
+function setProgress(n){document.getElementById('prog-fill').style.width=(n/(TOTAL-1)*100)+'%';document.getElementById('prog-label').textContent=labels[n]||'';document.getElementById('prog-count').textContent=(n+1)+' / '+TOTAL;}
+function showScene(n){document.querySelectorAll('.sc').forEach(function(s){s.classList.remove('on');});var el=document.getElementById('s'+n);if(el)el.classList.add('on');setProgress(n);cur=n;}
+function next(n){showScene(n);runScene(n);}
+function sched(ms){q(function(){if(!active)return;next(cur+1);},ms);}
+
+function runScene(n){
+  if(!active)return;
+  var fns=[rs0,rs1,rs2,rs3,rs4,rs5,rs6,rs7,rs8,rs9,rs10,rs11,rs12,rs13,rs14];
+  if(fns[n])fns[n]();
+}
+
+function rs0(){
+  q(function(){var e=document.getElementById('s0-pre');e.style.opacity='1';click();},500);
+  q(function(){document.getElementById('s0-logo').style.opacity='1';ding(880);},1400);
+  q(function(){document.getElementById('s0-sub').style.opacity='1';},2200);
+  q(function(){document.getElementById('s0-tag').style.opacity='1';},2800);
+  sched(5000);
+}
+
+function rs1(){
+  var a=document.getElementById('s1a'),b=document.getElementById('s1b'),c2=document.getElementById('s1c');
+  q(function(){a.style.opacity='1';a.style.transform='translateY(0)';click();},300);
+  q(function(){b.style.opacity='1';b.style.transform='translateY(0)';click();},1100);
+  q(function(){c2.style.opacity='1';},1900);
+  sched(5800);
+}
+
+function rs2(){
+  var steps=[['01','CREATE A BOARD','Name it. Set expiry. Add a password. Copy the 8-char code. Done.'],['02','SHARE THE CODE','Send the code to your group via WhatsApp, DM, link, however you like.'],['03','CONFESS FREELY','Everyone posts anonymously. React, reply, attach media. All live.']];
+  var container=document.getElementById('s2-steps');
+  steps.forEach(function(item,i){
+    q(function(){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;gap:10px;padding:10px 0;border-bottom:1px dashed #c5c5bf;align-items:flex-start;opacity:0;transition:opacity 0.4s;';
+      row.innerHTML='<div style="font-size:20px;font-weight:700;color:#c5c5bf;min-width:24px;">'+item[0]+'</div><div><div style="font-size:12px;font-weight:700;margin-bottom:3px;">'+item[1]+'</div><div style="font-size:10px;color:#6b6b67;line-height:1.6;">'+item[2]+'</div></div>';
+      container.appendChild(row);
+      setTimeout(function(){row.style.opacity='1';},50);
+      click();
+    },i*550+300);
+  });
+  sched(6000);
+}
+
+function rs3(){
+  var el=document.getElementById('s3-text');
+  var texts=['I told my lecturer I had malaria. I was watching Netflix the whole time.','I copied my entire coursework from ChatGPT and still got an A+.'];
+  var ci=0;
+  function typeIt(){
+    var t=texts[ci%texts.length],i=0;el.textContent='';
+    var iv=setInterval(function(){
+      if(!active){clearInterval(iv);return;}
+      el.textContent=t.slice(0,i)+'|';
+      if(i%3===0)click();
+      i++;
+      if(i>t.length){clearInterval(iv);el.textContent=t;ding();ci++;if(ci<texts.length)setTimeout(typeIt,2500);}
+    },48);
   }
+  q(typeIt,400);
+  sched(9500);
+}
 
-  // Auto-start after short delay (visuals work without audio)
-  runScene(0) // visuals start immediately
-  document.addEventListener('click', start)
-  document.addEventListener('keydown', start)
-})
+function rs4(){
+  var el=document.getElementById('s4-name');
+  var names=['VICTOR O.','SARAH K.','MIKE A.','TUNDE B.','ADA N.','EMEKA C.','CHISOM I.','FATI B.'];
+  var ni=0;
+  var iv=setInterval(function(){if(!active){clearInterval(iv);return;}el.textContent=names[ni%names.length];click();ni++;},90);
+  q(function(){clearInterval(iv);el.textContent='???';el.style.color='#cc0000';ding(660);},1800);
+  q(function(){el.textContent='GHOST \u00b7 G247';el.style.color='#16a34a';ding(1100);},2700);
+  sched(6200);
+}
+
+function rs5(){
+  var counter=document.getElementById('s5-count'),feed=document.getElementById('s5-feed');
+  var cnt=41;
+  var posts=['"I googled answers during the exam while pretending to think."','"On my way" was sent from my bed.','"I have attended 2 lectures this semester. Both were the wrong room."','"I pretend to be busy so nobody asks me for anything."'];
+  var pi=0;
+  var iv=setInterval(function(){
+    if(!active){clearInterval(iv);return;}
+    cnt++;
+    counter.style.animation='none';void counter.offsetWidth;counter.style.animation='countFlash 0.5s ease';
+    counter.textContent=String(cnt).padStart(4,'0');
+    ding(900);
+    if(pi<posts.length){
+      var p=document.createElement('div');
+      p.style.cssText='font-size:11px;line-height:1.6;padding:5px 0;border-bottom:1px dashed #c5c5bf;color:#3d3d3a;font-style:italic;opacity:0;transition:opacity 0.4s;';
+      p.textContent=posts[pi++];
+      feed.insertBefore(p,feed.firstChild);
+      setTimeout(function(){p.style.opacity='1';},60);
+    }
+  },1300);
+  sched(7000);
+}
+
+function rs6(){
+  var countEl=document.getElementById('s6-count'),lblEl=document.getElementById('s6-lbl'),listEl=document.getElementById('s6-list');
+  var names=['G247','S019','E441','C112','M091','V538','P773','R290'];
+  var colors=['#f59e0b','#8b5cf6','#ef4444','#3b82f6','#22c55e','#ec4899','#f97316','#06b6d4'];
+  var online=['G247'];
+  function render(){
+    countEl.textContent=online.length;
+    lblEl.textContent=online.length===1?'PERSON ONLINE':'PEOPLE ONLINE';
+    listEl.innerHTML=online.map(function(n,i){return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:#ede9df;border:1px solid #c5c5bf;margin-bottom:3px;font-size:10px;"><div style="display:flex;align-items:center;gap:7px;"><div style="width:20px;height:20px;border-radius:50%;background:'+colors[i%colors.length]+'22;border:1.5px solid '+colors[i%colors.length]+';display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:'+colors[i%colors.length]+'">'+n[0]+'</div><span style="color:#6b6b67;">ANON: '+n+'</span></div><span style="color:#22c55e;font-size:9px;letter-spacing:0.06em;">\u25cf LIVE</span></div>';}).join('');
+  }
+  render();
+  var ni=1;
+  var iv=setInterval(function(){
+    if(!active){clearInterval(iv);return;}
+    if(online.length<6&&ni<names.length){online.push(names[ni++]);pop();}
+    else if(online.length>2){online.shift();}
+    render();
+  },900);
+  sched(6000);
+}
+
+function rs7(){
+  var rxns=[['&#10084;&#65039;',19,'ink'],['&#128128;',34,'ink'],['&#128557;',8,'muted'],['&#128514;',5,'muted'],['&#128293;',12,'muted'],['&#128064;',11,'muted'],['&#129327;',4,'muted'],['&#129730;',6,'muted'],['&#128561;',3,'muted'],['&#129089;',1,'muted']];
+  var cont=document.getElementById('s7-chips');
+  rxns.forEach(function(item,i){
+    q(function(){
+      var chip=document.createElement('span');
+      chip.className='chip '+item[2];
+      chip.innerHTML=item[0]+' <span>0</span>';
+      cont.appendChild(chip);
+      setTimeout(function(){chip.classList.add('pop');},50);
+      pop();
+      var n=0,max=item[1],sp=chip.querySelector('span');
+      var iv2=setInterval(function(){n=Math.min(n+Math.ceil(max/6),max);sp.textContent=n;if(n>=max)clearInterval(iv2);},60);
+    },i*110+200);
+  });
+  sched(5500);
+}
+
+function rs8(){
+  var replies=[{who:'ANON: S019 \u00b7 5M AGO',text:"you're not alone in this fr"},{who:'ANON: E441 \u00b7 3M AGO',text:"same. been wearing the mask so long it's stuck to my face"},{who:'ANON: C112 \u00b7 1M AGO',text:'this one hit different. thank you for posting this'}];
+  var cont=document.getElementById('s8-replies');
+  replies.forEach(function(r,i){
+    q(function(){
+      var b=document.createElement('div');
+      b.className='rbub';
+      b.innerHTML='<div class="who">'+r.who+'</div>'+r.text;
+      cont.appendChild(b);
+      setTimeout(function(){b.classList.add('on');},50);
+      click();
+    },i*600+300);
+  });
+  sched(6000);
+}
+
+function rs9(){
+  var bar=document.getElementById('s9-bar'),pct=document.getElementById('s9-pct'),p=0;
+  var iv=setInterval(function(){
+    if(!active){clearInterval(iv);return;}
+    p=Math.min(100,p+Math.random()*8+4);
+    bar.style.width=p+'%';
+    pct.textContent=p>=100?'UPLOAD COMPLETE \u2713':'UPLOADING... '+Math.round(p)+'%';
+    if(p>=100){clearInterval(iv);ding(1320);}
+  },120);
+  sched(6000);
+}
+
+function rs10(){
+  var el=document.getElementById('s10-timer'),s=86387;
+  var iv=setInterval(function(){
+    if(!active){clearInterval(iv);return;}
+    s--;
+    var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+    el.textContent=String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(sc).padStart(2,'0');
+  },80);
+  sched(5500);
+}
+
+function rs11(){
+  var cont=document.getElementById('s11-dots'),btn=document.getElementById('s11-btn'),stat=document.getElementById('s11-status');
+  for(var i=0;i<8;i++){var d=document.createElement('div');d.id='pd'+i;d.style.cssText='width:9px;height:9px;border-radius:50%;border:1.5px solid #9b9b96;transition:all 0.15s;';cont.appendChild(d);}
+  function fill(i){
+    if(i<8){q(function(){var idx=i;var d=document.getElementById('pd'+idx);if(d){d.style.background='#1a1a18';d.style.borderColor='#1a1a18';}click();fill(idx+1);},160*i+160);}
+    else{q(function(){btn.style.background='#16a34a';btn.textContent='ACCESS GRANTED \u2713';stat.textContent='\u2713 PASSWORD VERIFIED';ding(1100);q(function(){for(var j=0;j<8;j++){var d=document.getElementById('pd'+j);if(d){d.style.background='transparent';d.style.borderColor='#9b9b96';}}btn.style.background='#1a1a18';btn.textContent='ENTER BOARD \u2192';stat.textContent='';fill(0);},2000);},300);}
+  }
+  q(function(){fill(0);},500);
+  sched(7000);
+}
+
+function rs12(){
+  var plats=[['X / TWITTER','1080 \u00d7 1080 SQUARE'],['WHATSAPP','FULL-WIDTH CARD'],['INSTAGRAM','PORTRAIT STORY'],['TIKTOK','PORTRAIT OVERLAY'],['THREADS','COMPACT CARD']];
+  var cont=document.getElementById('s12-plats');
+  plats.forEach(function(p){var row=document.createElement('div');row.className='plat';row.innerHTML='<span>'+p[0]+'</span><span style="font-size:10px;opacity:0.6;">'+p[1]+'</span>';cont.appendChild(row);});
+  var rows=cont.querySelectorAll('.plat'),ci=0;
+  var iv=setInterval(function(){
+    if(!active){clearInterval(iv);return;}
+    rows.forEach(function(r){r.classList.remove('sel');});
+    rows[ci].classList.add('sel');click();
+    ci=(ci+1)%rows.length;
+  },700);
+  sched(5500);
+}
+
+function rs13(){
+  var icon=document.getElementById('s13-icon'),mode=document.getElementById('s13-mode'),prev=document.getElementById('s13-preview');
+  var dark=false;
+  var iv=setInterval(function(){
+    if(!active){clearInterval(iv);return;}
+    dark=!dark;
+    icon.textContent=dark?'\u2600':'\u25d1';
+    mode.textContent=dark?'LIGHT MODE':'DARK MODE';
+    prev.style.background=dark?'#1a1a18':'#f5f2eb';
+    prev.style.color=dark?'#f5f2eb':'#1a1a18';
+    prev.style.borderColor=dark?'#f5f2eb':'#c5c5bf';
+    prev.innerHTML='<span style="display:block;font-weight:700;letter-spacing:0.08em;">PREVIEW</span><span style="color:'+(dark?'rgba(245,242,235,0.4)':'#6b6b67')+';">CURRENT: '+(dark?'DARK':'LIGHT')+'</span>';
+    click();
+  },1200);
+  sched(5500);
+}
+
+function rs14(){
+  ding(880);
+  var items=[['01','ANONYMOUS POSTING','No accounts, no names, random aliases per session'],['02','REAL-TIME FEED','Posts appear instantly via Supabase websockets'],['03','LIVE PRESENCE','See how many people are on the board right now'],['04','10 REACTIONS','React anonymously, counts update live for all'],['05','REPLY THREADS','Nested replies, also fully anonymous and real-time'],['06','IMAGE & VIDEO','Up to 50MB, grayscale filter, plays inline on cards'],['07','BOARD EXPIRY','24h \u00b7 7d \u00b7 30d \u00b7 \u221e \u2014 auto-wipes everything at zero'],['08','PASSWORD LOCK','SHA-256 hashed, optional, remembered per device'],['09','SOCIAL SHARE CARDS','5 platforms, receipt-styled PNG, download or share'],['10','DARK MODE','Toggle in header, saves instantly to localStorage'],['11','MOBILE READY','Bottom sheet, floating post button, touch optimized']];
+  var cont=document.getElementById('s14-list');
+  items.forEach(function(item,i){
+    q(function(){
+      var row=document.createElement('div');
+      row.style.cssText='display:flex;justify-content:space-between;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #c5c5bf;font-size:11px;opacity:0;transition:opacity 0.3s;';
+      row.innerHTML='<div><span style="color:#9b9b96;font-size:9px;margin-right:6px;">'+item[0]+'</span>'+item[1]+'<div style="font-size:9px;color:#9b9b96;margin-top:1px;">'+item[2]+'</div></div><span style="color:#22c55e;font-weight:700;font-size:12px;margin-left:8px;">\u2713</span>';
+      cont.appendChild(row);
+      setTimeout(function(){row.style.opacity='1';},50);
+      click();
+    },i*190+400);
+  });
+  q(function(){document.getElementById('s14-cta').style.opacity='1';ding(1100);},items.length*190+900);
+}
+
+function goEnd(){
+  clearAll();stopBeat();
+  var stage=document.getElementById('stage');
+  stage.style.transition='opacity 0.5s';stage.style.opacity='0';
+  setTimeout(function(){
+    stage.style.display='none';
+    document.getElementById('end-screen').classList.add('on');
+    document.getElementById('skip-btn').classList.remove('on');
+    document.getElementById('prog-wrap').classList.remove('on');
+    document.getElementById('ticker').classList.remove('on');
+    localStorage.setItem('whispr_intro_seen','1');
+  },500);
+}
+
+function replay(){
+  document.getElementById('end-screen').classList.remove('on');
+  ['s14-list','s2-steps','s5-feed','s8-replies','s12-plats','s11-dots','s7-chips'].forEach(function(id){document.getElementById(id).innerHTML='';});
+  document.getElementById('s4-name').style.color='';
+  ['s0-logo','s0-pre','s0-sub','s0-tag','s1a','s1b','s1c'].forEach(function(id){document.getElementById(id).style.opacity='0';});
+  document.getElementById('s1a').style.transform='translateY(8px)';
+  document.getElementById('s1b').style.transform='translateY(8px)';
+  document.getElementById('s3-text').textContent='';
+  document.getElementById('s9-bar').style.width='0%';
+  document.getElementById('s9-pct').textContent='UPLOADING... 0%';
+  document.getElementById('s14-cta').style.opacity='0';
+  var stage=document.getElementById('stage');
+  stage.style.display='flex';stage.style.opacity='1';
+  document.getElementById('skip-btn').classList.add('on');
+  document.getElementById('prog-wrap').classList.add('on');
+  document.getElementById('ticker').classList.add('on');
+  active=true;cur=0;
+  showScene(0);startBeat();runScene(0);
+}
+
+function boot(){
+  var ss=document.getElementById('start-screen');
+  ss.style.transition='opacity 0.4s';ss.style.opacity='0';
+  setTimeout(function(){
+    ss.style.display='none';
+    document.getElementById('stage').classList.add('on');
+    document.getElementById('skip-btn').classList.add('on');
+    document.getElementById('prog-wrap').classList.add('on');
+    document.getElementById('ticker').classList.add('on');
+    active=true;cur=0;
+    showScene(0);startBeat();runScene(0);
+  },400);
+}
 </script>
 </body>
 </html>
