@@ -466,7 +466,11 @@ export default function BoardPage() {
           #desktop-sidebar { display: none !important; }
           #mobile-menu-btn { display: flex !important; }
           #mobile-fab { display: block !important; }
-          .header-desktop { display: none !important; }
+          .hdr-desktop { display: none !important; }
+        }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(300%); }
         }
       `}</style>
     </div>
@@ -518,14 +522,20 @@ function ReceiptCard({ confession: c, index, myReactions, onReact, onShare, onRe
           {c.text}
         </p>
 
-        {/* Image */}
+        {/* Image or Video */}
         {c.image_url && (
           <div className="img-wrapper" style={{ marginBottom: '12px', border: '1px solid var(--ink-5)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={c.image_url} alt="attached" className="no-save"
-                 style={{ width: '100%', display: 'block', filter: 'grayscale(25%)' }}
-                 onContextMenu={e => e.preventDefault()} draggable={false} />
-            <div style={{ position: 'absolute', inset: 0, cursor: 'default' }} />
+            {c.image_url.match(/\.(mp4|mov|webm|ogg)(\?|$)/i) ? (
+              <video src={c.image_url} controls playsInline
+                     style={{ width: '100%', display: 'block', maxHeight: '280px', background: '#000' }}
+                     onContextMenu={e => e.preventDefault()} />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={c.image_url} alt="attached" className="no-save"
+                   style={{ width: '100%', display: 'block', filter: 'grayscale(25%)' }}
+                   onContextMenu={e => e.preventDefault()} draggable={false} />
+            )}
+            <div style={{ position: 'absolute', inset: 0, cursor: 'default', pointerEvents: 'none' }} />
           </div>
         )}
 
@@ -614,7 +624,7 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
   function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) { alert('IMAGE TOO LARGE — MAX 5MB'); return }
+    if (file.size > 50 * 1024 * 1024) { alert('FILE TOO LARGE — MAX 50MB'); return }
     setImage(file)
     setUploadStage('reading')
     setUploadProgress(0)
@@ -668,8 +678,8 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
           <div style={{ textAlign: 'right', fontSize: '10px', color: 'var(--ink-4)', marginTop: '3px' }}>{text.length}/500</div>
         </div>
         <div>
-          <label className="label" style={{ display: 'block', marginBottom: '6px' }}>ATTACH IMAGE (OPTIONAL)</label>
-          <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} style={{ display: 'none' }} />
+          <label className="label" style={{ display: 'block', marginBottom: '6px' }}>ATTACH IMAGE OR VIDEO (OPTIONAL)</label>
+          <input ref={fileRef} type="file" accept="image/*,video/*" onChange={pickImage} style={{ display: 'none' }} />
           {/* Upload progress bar */}
           {uploadStage !== 'idle' && uploadProgress < 100 && (
             <div style={{ marginBottom: '8px' }}>
@@ -679,30 +689,50 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
               </div>
               <div style={{ height: '6px', background: 'var(--paper-3)', border: '1px solid var(--ink-5)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${uploadProgress}%`, background: 'var(--ink)', transition: 'width 0.2s ease' }} />
-                {/* Receipt-style striped pattern on fill */}
                 <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${uploadProgress}%`, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.15) 3px, rgba(255,255,255,0.15) 6px)', transition: 'width 0.2s ease' }} />
               </div>
             </div>
           )}
 
-          {imagePreview ? (
+          {imagePreview && image ? (
             <div style={{ position: 'relative', border: '1px solid var(--ink-4)' }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imagePreview} alt="preview" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block', filter: 'grayscale(20%)' }} />
+              {image.type.startsWith('video/') ? (
+                <video src={imagePreview} controls style={{ width: '100%', maxHeight: '160px', display: 'block', background: '#000' }} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imagePreview} alt="preview" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block', filter: 'grayscale(20%)' }} />
+              )}
               <button type="button" onClick={() => { setImage(null); setImagePreview(null); setUploadProgress(0); setUploadStage('idle') }}
                       style={{ position: 'absolute', top: '6px', right: '6px', background: 'var(--ink)', color: 'var(--paper)', border: 'none', padding: '3px 8px', fontSize: '10px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer' }}>✕</button>
-              {/* File size indicator */}
-              {image && (
-                <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(26,26,24,0.75)', color: 'var(--paper)', padding: '2px 7px', fontSize: '9px', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.05em' }}>
-                  {(image.size / 1024).toFixed(0)}KB
-                </div>
-              )}
+              <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(26,26,24,0.75)', color: '#fff', padding: '2px 7px', fontSize: '9px', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.05em' }}>
+                {image.type.startsWith('video/') ? '▶ ' : ''}{image.size > 1024 * 1024 ? (image.size / 1024 / 1024).toFixed(1) + 'MB' : (image.size / 1024).toFixed(0) + 'KB'}
+              </div>
             </div>
           ) : (
             <button type="button" onClick={() => fileRef.current?.click()}
                     style={{ width: '100%', padding: '14px', border: '1px dashed var(--ink-4)', background: 'transparent', color: 'var(--ink-3)', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', letterSpacing: '0.05em' }}>
-              + ATTACH IMAGE (MAX 5MB)
+              + ATTACH IMAGE OR VIDEO (MAX 50MB)
             </button>
+          )}
+
+          {/* Upload / post progress bar */}
+          {(uploadStage === 'uploading' || uploadStage === 'posting') && (
+            <div style={{ marginTop: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', color: 'var(--ink-3)', letterSpacing: '0.06em', marginBottom: '4px' }}>
+                <span>{uploadStage === 'uploading' ? 'UPLOADING IMAGE...' : 'POSTING...'}</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div style={{ height: '4px', background: 'var(--ink-5)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', background: 'var(--ink)', width: `${uploadProgress}%`, transition: 'width 0.25s ease' }} />
+                {/* Animated shimmer */}
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: '40%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)', animation: 'shimmer 1s ease infinite' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '2px', marginTop: '4px' }}>
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div key={i} style={{ flex: 1, height: '2px', background: i < Math.floor(uploadProgress / 5) ? 'var(--ink)' : 'var(--ink-5)', transition: 'background 0.1s' }} />
+                ))}
+              </div>
+            </div>
           )}
         </div>
         <div>
