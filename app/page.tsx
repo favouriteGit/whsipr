@@ -17,6 +17,8 @@ export default function HomePage() {
   const [boardName, setBoardName] = useState('')
   const [joinCode, setJoinCode]   = useState('')
   const [expiry, setExpiry]       = useState<number | null>(null)
+  const [password, setPassword]   = useState('')
+  const [showPass, setShowPass]   = useState(false)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
   const [darkMode, setDarkMode]   = useState(() => {
@@ -34,7 +36,7 @@ export default function HomePage() {
     if (!boardName.trim()) return
     setLoading(true); setError('')
     try {
-      const b = await createBoard(boardName.trim(), expiry)
+      const b = await createBoard(boardName.trim(), expiry, password.trim() || undefined)
       router.push(`/board/${b.code}`)
     } catch { setError('ERROR: COULD NOT PROCESS'); setLoading(false) }
   }
@@ -173,6 +175,28 @@ export default function HomePage() {
                     )
                   })}
                 </div>
+              </div>
+
+              {/* Password (optional) */}
+              <div>
+                <label className="label" style={{ display: 'block', marginBottom: '8px' }}>
+                  BOARD PASSWORD <span style={{ color: 'var(--ink-4)', fontWeight: 400 }}>(OPTIONAL)</span>
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <input className="input" type={showPass ? 'text' : 'password'}
+                         value={password} onChange={e => setPassword(e.target.value)}
+                         placeholder="LEAVE BLANK FOR OPEN BOARD" maxLength={32}
+                         style={{ paddingRight: '56px', letterSpacing: password ? '0.1em' : '0' }} />
+                  <button type="button" onClick={() => setShowPass(s => !s)}
+                          style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--ink-4)', cursor: 'pointer', fontSize: '10px', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.04em' }}>
+                    {showPass ? 'HIDE' : 'SHOW'}
+                  </button>
+                </div>
+                {password.trim() && (
+                  <p style={{ fontSize: '9px', color: 'var(--ink-4)', marginTop: '4px', letterSpacing: '0.04em' }}>
+                    🔒 MEMBERS WILL NEED THIS PASSWORD TO ENTER
+                  </p>
+                )}
               </div>
 
               {error && <p style={{ fontSize: '11px', color: '#cc0000', fontWeight: 600, border: '1px solid #cc0000', padding: '6px 10px' }}>{error}</p>}

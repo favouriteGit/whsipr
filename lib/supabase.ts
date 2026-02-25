@@ -11,6 +11,7 @@ export type Board = {
   code: string
   created_at: string
   expires_at: string | null
+  has_password: boolean
 }
 
 export type Confession = {
@@ -32,16 +33,20 @@ export function getSessionId(): string {
   return sid
 }
 
-export async function createBoard(name: string, expiryHours: number | null): Promise<Board> {
+export async function hashPassword(password: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password))
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function createBoard(name: string, expiryHours: number | null, password?: string): Promise<Board> {
   const code = generateCode()
-  const expires_at = expiryHours
-    ? new Date(Date.now() + expiryHours * 3600000).toISOString()
-    : null
-  const { data, error } = await supabase
-    .from('boards')
-    .insert({ name, code, expires_at })
-    .select()
-    .single()
+  const expires_at = expiryHours ? new Date(Date.now() + expiryHours * 3600000).toISOString() : null
+  const payload: Record<string, unknown> = { name, code, expires_at }
+  if (password && password.trim()) {
+    payload.password_hash = await hashPassword(password.trim())
+    payload.has_password  = true
+  }
+  const { data, error } = await supabase.from('boards').insert(payload).select().single()
   if (error) throw error
   return data
 }
@@ -49,6 +54,20 @@ export async function createBoard(name: string, expiryHours: number | null): Pro
 export async function getBoardByCode(code: string): Promise<Board | null> {
   const { data } = await supabase.from('boards').select().eq('code', code.toUpperCase()).single()
   return data
+}
+
+export async function verifyBoardPassword(boardId: string, password: string): Promise<boolean> {
+  const hash = await hashPassword(password)
+  const { data } = await supabase.from('boards').select('password_hash').eq('id', boardId).single()
+  return data?.password_hash === hash
+}
+
+export function getBoardAccess(boardId: string): boolean {
+  if (typeof window === 'undefined') return false
+  return localStorage.getItem(`whispr_access_${boardId}`) === 'granted'
+}
+export function setBoardAccess(boardId: string) {
+  if (typeof window !== 'undefined') localStorage.setItem(`whispr_access_${boardId}`, 'granted')
 }
 
 export async function getConfessions(boardId: string): Promise<Confession[]> {

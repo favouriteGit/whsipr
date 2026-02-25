@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation'
 import {
   supabase, getBoardByCode, getConfessions, postConfession,
   toggleReaction, getMyReactions, getSessionId, getAnon, timeAgo,
-  MOOD_LABELS, MOODS, type Board, type Confession
+  MOOD_LABELS, MOODS, verifyBoardPassword, getBoardAccess, setBoardAccess,
+  type Board, type Confession
 } from '@/lib/supabase'
 import ShareCard from '@/components/ShareCard'
 import RepliesThread from '@/components/RepliesThread'
@@ -22,6 +23,7 @@ export default function BoardPage() {
   const [loading, setLoading]       = useState(true)
   const [notFound, setNotFound]     = useState(false)
   const [isExpired, setIsExpired]   = useState(false)
+  const [needsPassword, setNeedsPassword] = useState(false)
   const [showConfess, setShowConfess] = useState(false)
   const [showInvite, setShowInvite]   = useState(false)
   const [sharing, setSharing]       = useState<Confession | null>(null)
@@ -51,6 +53,10 @@ export default function BoardPage() {
       setBoard(b)
       if (b.expires_at && new Date(b.expires_at).getTime() < Date.now()) {
         setIsExpired(true); setLoading(false); return
+      }
+      // Check password gate
+      if (b.has_password && !getBoardAccess(b.id)) {
+        setNeedsPassword(true); setLoading(false); return
       }
       const [c, r] = await Promise.all([getConfessions(b.id), getMyReactions(b.id, sid)])
       setConfessions(c); setMyReactions(r); setLiveCount(c.length)
@@ -291,6 +297,10 @@ export default function BoardPage() {
         </div>
       </div>
     </div>
+  )
+
+  if (needsPassword) return (
+    <PasswordGate board={board!} onSuccess={() => { setNeedsPassword(false); load() }} />
   )
 
   return (
@@ -773,6 +783,96 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
       <div className="modal anim-up" style={{ maxHeight: '90vh', overflowY: 'auto' }}>
         <button onClick={onClose} style={{ position: 'absolute', top: '14px', right: '14px', background: 'none', border: 'none', color: 'var(--ink-3)', cursor: 'pointer', fontSize: '16px', fontFamily: "'IBM Plex Mono',monospace" }}>✕</button>
         {children}
+      </div>
+    </div>
+  )
+}
+
+/* ── Password Gate ── */
+function PasswordGate({ board, onSuccess }: { board: Board; onSuccess: () => void }) {
+  const [password, setPassword] = useState('')
+  const [showPass, setShowPass] = useState(false)
+  const [error, setError]       = useState('')
+  const [checking, setChecking] = useState(false)
+  const attempts                = useRef(0)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!password.trim() || checking) return
+    setChecking(true); setError('')
+    const ok = await verifyBoardPassword(board.id, password.trim())
+    if (ok) {
+      setBoardAccess(board.id)
+      onSuccess()
+    } else {
+      attempts.current += 1
+      setError(attempts.current >= 3 ? 'ERROR: WRONG PASSWORD — MULTIPLE FAILED ATTEMPTS' : 'ERROR: WRONG PASSWORD')
+      setPassword('')
+      setChecking(false)
+    }
+  }
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '340px', animation: 'feedIn 0.3s ease' }}>
+        <div className="receipt" style={{ padding: '24px' }}>
+
+          <div className="thermal-center" style={{ marginBottom: '14px' }}>
+            <div style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '0.15em', marginBottom: '4px' }}>WHISPR</div>
+            <div style={{ fontSize: '10px', color: 'var(--ink-3)', letterSpacing: '0.08em' }}>ACCESS RESTRICTED</div>
+          </div>
+
+          <div className="dash-line" style={{ margin: '12px 0' }} />
+
+          <div style={{ fontSize: '11px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+              <span style={{ color: 'var(--ink-3)' }}>BOARD</span>
+              <span style={{ fontWeight: 600 }}>{board.name.toUpperCase()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--ink-3)' }}>STATUS</span>
+              <span style={{ fontWeight: 700, color: '#cc0000' }}>🔒 PASSWORD PROTECTED</span>
+            </div>
+          </div>
+
+          <div className="dash-line" style={{ margin: '12px 0' }} />
+
+          <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div>
+              <label className="label" style={{ display: 'block', marginBottom: '6px' }}>ENTER PASSWORD</label>
+              <div style={{ position: 'relative' }}>
+                <input className="input" type={showPass ? 'text' : 'password'}
+                       value={password} onChange={e => setPassword(e.target.value)}
+                       placeholder="••••••••" autoFocus
+                       style={{ paddingRight: '56px', letterSpacing: '0.15em' }} />
+                <button type="button" onClick={() => setShowPass(s => !s)}
+                        style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--ink-4)', cursor: 'pointer', fontSize: '10px', fontFamily: "'IBM Plex Mono',monospace" }}>
+                  {showPass ? 'HIDE' : 'SHOW'}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <p style={{ fontSize: '10px', color: '#cc0000', fontWeight: 600, border: '1px solid #cc0000', padding: '6px 10px', letterSpacing: '0.04em' }}>{error}</p>
+            )}
+
+            <div className="dash-line" />
+
+            <button type="submit" disabled={checking || !password.trim()} className="btn-primary"
+                    style={{ width: '100%', padding: '11px', opacity: checking || !password.trim() ? 0.5 : 1 }}>
+              {checking ? 'VERIFYING...' : 'ENTER BOARD →'}
+            </button>
+
+            <a href="/" style={{ display: 'block', textAlign: 'center', fontSize: '10px', color: 'var(--ink-4)', textDecoration: 'none', letterSpacing: '0.05em', marginTop: '4px' }}>
+              ← GO HOME
+            </a>
+          </form>
+
+          <div className="dash-line" style={{ margin: '14px 0' }} />
+          <div style={{ textAlign: 'center', fontSize: '10px', color: 'var(--ink-4)', letterSpacing: '0.08em' }}>
+            CONTACT THE BOARD CREATOR FOR ACCESS
+          </div>
+        </div>
       </div>
     </div>
   )
