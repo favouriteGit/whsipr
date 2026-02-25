@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBoard, getBoardByCode } from '@/lib/supabase'
 
@@ -19,6 +19,15 @@ export default function HomePage() {
   const [expiry, setExpiry]       = useState<number | null>(null)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
+  const [darkMode, setDarkMode]   = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('whispr_theme') === 'dark'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('whispr_theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
@@ -48,6 +57,13 @@ export default function HomePage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px' }}>
+
+      {/* Dark mode toggle — fixed corner */}
+      <button onClick={() => setDarkMode(d => !d)}
+              style={{ position: 'fixed', top: '16px', right: '16px', background: 'var(--ink)', color: 'var(--paper)', border: 'none', padding: '7px 10px', fontSize: '14px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', zIndex: 50, lineHeight: 1 }}
+              title={darkMode ? 'Light mode' : 'Dark mode'}>
+        {darkMode ? '☀' : '◑'}
+      </button>
 
       {/* ── HOME ── */}
       {view === 'home' && (

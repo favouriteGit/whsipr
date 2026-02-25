@@ -28,6 +28,15 @@ export default function BoardPage() {
   const [replying, setReplying]     = useState<Confession | null>(null)
   const [toast, setToast]           = useState<{ msg: string; ok: boolean } | null>(null)
   const [mobileSheet, setMobileSheet] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return localStorage.getItem('whispr_theme') === 'dark'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('whispr_theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
   const [liveCount, setLiveCount]   = useState(0)
   const [newBadge, setNewBadge]     = useState(false)
   const [presence, setPresence]     = useState(1) // at least the current user
@@ -139,6 +148,8 @@ export default function BoardPage() {
   const moodCount = confessions.reduce<Record<string,number>>((a,c)=>{a[c.mood]=(a[c.mood]||0)+1;return a},{})
   const todayCount = confessions.filter(c=>Date.now()-+new Date(c.created_at)<86400000).length
   const dateStr   = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'-')
+  // Apply dark mode to document
+  useEffect(() => { document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light") }, [darkMode])
 
   /* ── Sidebar content shared between desktop + mobile ── */
   const SidebarContent = ({ onClose, isMobile }: { onClose?: () => void; isMobile?: boolean }) => (
@@ -286,33 +297,51 @@ export default function BoardPage() {
     <div style={{ minHeight: '100vh' }}>
 
       {/* ── Header ── */}
-      <header style={{ background: 'var(--ink)', color: 'var(--paper)', padding: '0 20px', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+      <header style={{ background: 'var(--ink)', color: 'var(--paper)', padding: '0 16px', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+          {/* Left side */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+            {/* Mobile hamburger */}
             <button onClick={() => setMobileSheet(true)} id="mobile-menu-btn"
-                    style={{ background: 'none', border: '1px solid rgba(245,242,235,0.2)', color: 'rgba(245,242,235,0.6)', padding: '4px 8px', fontSize: '12px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', display: 'none', flexShrink: 0 }}>☰</button>
-            <a href="/" style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: '16px', color: 'var(--paper)', textDecoration: 'none', letterSpacing: '0.1em', flexShrink: 0 }}>WHISPR</a>
-            {/* Board name + live dot — hidden on mobile */}
-            <span className="header-desktop" style={{ color: 'rgba(245,242,235,0.25)', fontSize: '14px' }}>|</span>
-            <div className="header-desktop" style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, overflow: 'hidden' }}>
+                    style={{ background: 'none', border: '1px solid rgba(245,242,235,0.2)', color: 'rgba(245,242,235,0.6)', padding: '5px 8px', fontSize: '12px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', display: 'none', flexShrink: 0 }}>☰</button>
+
+            {/* Logo — always visible */}
+            <a href="/" style={{ fontFamily: "'IBM Plex Mono',monospace", fontWeight: 700, fontSize: '15px', color: 'var(--paper)', textDecoration: 'none', letterSpacing: '0.1em', flexShrink: 0 }}>WHISPR</a>
+
+            {/* Separator + board name — hidden on mobile */}
+            <span className="hdr-desktop" style={{ color: 'rgba(245,242,235,0.25)' }}>|</span>
+            <div className="hdr-desktop" style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
               <span className="anim-blink" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4ade80', flexShrink: 0 }} />
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'rgba(245,242,235,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.05em' }}>{board?.name.toUpperCase()}</span>
             </div>
+
             {/* Presence pill — hidden on mobile */}
-            <div className="header-desktop" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', padding: '3px 8px', flexShrink: 0 }}>
+            <div className="hdr-desktop" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)', padding: '3px 8px', flexShrink: 0 }}>
               <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#4ade80', display: 'block' }} />
               <span style={{ fontSize: '10px', color: 'rgba(74,222,128,0.9)', letterSpacing: '0.06em', fontWeight: 600 }}>{presence} ONLINE</span>
             </div>
+
             {/* Receipt counter — hidden on mobile */}
-            <div className="header-desktop" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(245,242,235,0.06)', border: '1px solid rgba(245,242,235,0.12)', padding: '3px 8px', flexShrink: 0 }}>
+            <div className="hdr-desktop" style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(245,242,235,0.06)', border: '1px solid rgba(245,242,235,0.12)', padding: '3px 8px', flexShrink: 0 }}>
               <span style={{ fontSize: '10px', color: 'rgba(245,242,235,0.35)', letterSpacing: '0.06em' }}>RCP</span>
               <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.1em', color: newBadge ? '#4ade80' : 'rgba(245,242,235,0.75)', transition: 'color 0.4s' }}>#{String(liveCount).padStart(4,'0')}</span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            {/* Invite — hidden on mobile, accessible via sidebar sheet */}
-            <button onClick={() => setShowInvite(true)} className="header-desktop" style={{ background: 'transparent', border: '1px solid rgba(245,242,235,0.25)', color: 'rgba(245,242,235,0.65)', padding: '6px 12px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', letterSpacing: '0.06em' }}>INVITE</button>
-            <button onClick={() => setShowConfess(true)} style={{ background: 'var(--paper)', border: 'none', color: 'var(--ink)', padding: '6px 14px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', fontWeight: 700, letterSpacing: '0.06em' }}>+ POST</button>
+
+          {/* Right side */}
+          <div style={{ display: 'flex', gap: '6px', flexShrink: 0, alignItems: 'center' }}>
+            {/* Dark mode toggle — always visible */}
+            <button onClick={() => setDarkMode(d => !d)}
+                    style={{ background: 'transparent', border: '1px solid rgba(245,242,235,0.2)', color: 'rgba(245,242,235,0.6)', padding: '5px 8px', fontSize: '13px', cursor: 'pointer', lineHeight: 1, flexShrink: 0 }}
+                    title={darkMode ? 'Light mode' : 'Dark mode'}>
+              {darkMode ? '☀' : '◑'}
+            </button>
+            {/* Invite — hidden on mobile */}
+            <button onClick={() => setShowInvite(true)} className="hdr-desktop"
+                    style={{ background: 'transparent', border: '1px solid rgba(245,242,235,0.25)', color: 'rgba(245,242,235,0.65)', padding: '6px 10px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', letterSpacing: '0.06em' }}>INVITE</button>
+            {/* Post — hidden on mobile (FAB handles it) */}
+            <button onClick={() => setShowConfess(true)} className="hdr-desktop"
+                    style={{ background: 'var(--paper)', border: 'none', color: 'var(--ink)', padding: '6px 12px', fontSize: '11px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer', fontWeight: 700, letterSpacing: '0.06em' }}>+ POST</button>
           </div>
         </div>
       </header>
@@ -578,6 +607,8 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
   const [image, setImage]           = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading]       = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadStage, setUploadStage] = useState<'idle' | 'reading' | 'uploading' | 'posting'>('idle')
   const fileRef                     = useRef<HTMLInputElement>(null)
 
   function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -585,8 +616,11 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
     if (!file) return
     if (file.size > 5 * 1024 * 1024) { alert('IMAGE TOO LARGE — MAX 5MB'); return }
     setImage(file)
+    setUploadStage('reading')
+    setUploadProgress(0)
     const reader = new FileReader()
-    reader.onload = ev => setImagePreview(ev.target?.result as string)
+    reader.onprogress = (ev) => { if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 40)) }
+    reader.onload = ev => { setImagePreview(ev.target?.result as string); setUploadProgress(100); setUploadStage('idle') }
     reader.readAsDataURL(file)
   }
 
@@ -597,17 +631,27 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
     try {
       let imageUrl: string | undefined
       if (image) {
+        setUploadStage('uploading')
+        setUploadProgress(10)
         const ext  = image.name.split('.').pop()
         const path = `${crypto.randomUUID()}.${ext}`
+        // Simulate progress while uploading
+        const progressInterval = setInterval(() => {
+          setUploadProgress(p => p < 85 ? p + 8 : p)
+        }, 200)
         const { error: upErr } = await supabase.storage.from('confession-images').upload(path, image, { contentType: image.type })
+        clearInterval(progressInterval)
+        setUploadProgress(95)
         if (!upErr) {
           const { data } = supabase.storage.from('confession-images').getPublicUrl(path)
           imageUrl = data.publicUrl
         }
       }
+      setUploadStage('posting')
+      setUploadProgress(100)
       await postConfession(boardId, text.trim(), mood, imageUrl)
       onSuccess()
-    } catch { onError(); setLoading(false) }
+    } catch { onError(); setLoading(false); setUploadStage('idle'); setUploadProgress(0) }
   }
 
   return (
@@ -626,12 +670,33 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
         <div>
           <label className="label" style={{ display: 'block', marginBottom: '6px' }}>ATTACH IMAGE (OPTIONAL)</label>
           <input ref={fileRef} type="file" accept="image/*" onChange={pickImage} style={{ display: 'none' }} />
+          {/* Upload progress bar */}
+          {uploadStage !== 'idle' && uploadProgress < 100 && (
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--ink-3)', marginBottom: '4px', letterSpacing: '0.05em' }}>
+                <span>{uploadStage === 'reading' ? 'READING FILE...' : uploadStage === 'uploading' ? 'UPLOADING...' : 'POSTING...'}</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <div style={{ height: '6px', background: 'var(--paper-3)', border: '1px solid var(--ink-5)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${uploadProgress}%`, background: 'var(--ink)', transition: 'width 0.2s ease' }} />
+                {/* Receipt-style striped pattern on fill */}
+                <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${uploadProgress}%`, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.15) 3px, rgba(255,255,255,0.15) 6px)', transition: 'width 0.2s ease' }} />
+              </div>
+            </div>
+          )}
+
           {imagePreview ? (
             <div style={{ position: 'relative', border: '1px solid var(--ink-4)' }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imagePreview} alt="preview" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block', filter: 'grayscale(20%)' }} />
-              <button type="button" onClick={() => { setImage(null); setImagePreview(null) }}
+              <button type="button" onClick={() => { setImage(null); setImagePreview(null); setUploadProgress(0); setUploadStage('idle') }}
                       style={{ position: 'absolute', top: '6px', right: '6px', background: 'var(--ink)', color: 'var(--paper)', border: 'none', padding: '3px 8px', fontSize: '10px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer' }}>✕</button>
+              {/* File size indicator */}
+              {image && (
+                <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(26,26,24,0.75)', color: 'var(--paper)', padding: '2px 7px', fontSize: '9px', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.05em' }}>
+                  {(image.size / 1024).toFixed(0)}KB
+                </div>
+              )}
             </div>
           ) : (
             <button type="button" onClick={() => fileRef.current?.click()}
@@ -661,7 +726,11 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
         </p>
         <button type="submit" disabled={loading || !text.trim()} className="btn-primary"
                 style={{ width: '100%', padding: '11px', opacity: loading || !text.trim() ? 0.5 : 1 }}>
-          {loading ? 'PROCESSING...' : 'ISSUE RECEIPT'}
+          {loading
+            ? uploadStage === 'uploading' ? `UPLOADING... ${uploadProgress}%`
+            : uploadStage === 'posting' ? 'POSTING...'
+            : 'PROCESSING...'
+            : 'ISSUE RECEIPT'}
         </button>
       </form>
     </Modal>
