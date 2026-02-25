@@ -31,6 +31,13 @@ export default function HomePage() {
     localStorage.setItem('whispr_theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 
+  useEffect(() => {
+    const seen = localStorage.getItem('whispr_intro_seen')
+    if (!seen) {
+      window.location.href = '/whispr-intro.html'
+    }
+  }, [])
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     if (!boardName.trim()) return

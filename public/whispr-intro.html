@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WHISPR</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#111110; font-family:'IBM Plex Mono',monospace; }
+
+/* ── INTRO OVERLAY ── */
+#intro {
+  position:fixed; inset:0; z-index:9999;
+  background:#111110; color:#f5f2eb;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  overflow:hidden;
+}
+
+/* grid paper */
+#intro::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(245,242,235,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245,242,235,0.03) 1px, transparent 1px);
+  background-size:28px 28px;
+}
+
+/* noise */
+#intro::after {
+  content:''; position:absolute; inset:0; pointer-events:none; opacity:0.04;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── SKIP BUTTON ── */
+#skip-btn {
+  position:fixed; top:24px; right:24px; z-index:10000;
+  background:transparent; border:1px solid rgba(245,242,235,0.25);
+  color:rgba(245,242,235,0.5); padding:8px 16px;
+  font-family:'IBM Plex Mono',monospace; font-size:11px;
+  letter-spacing:0.1em; cursor:pointer;
+  transition:all 0.2s; display:none;
+}
+#skip-btn:hover { background:rgba(245,242,235,0.1); color:rgba(245,242,235,0.8); }
+#skip-btn.show { display:block; animation:fadeIn 0.5s ease; }
+
+/* ── SCENE CONTAINER ── */
+#scene {
+  position:relative; z-index:1;
+  width:100%; max-width:480px; padding:0 24px;
+  display:flex; flex-direction:column; align-items:center;
+}
+
+/* ── RECEIPT ── */
+.receipt {
+  background:#f5f2eb; color:#1a1a18;
+  border:1px solid #1a1a18; /* use ink color for border */
+  padding:24px 22px;
+  width:100%; position:relative;
+  box-shadow:4px 4px 0 rgba(0,0,0,0.4), 8px 8px 0 rgba(0,0,0,0.2);
+}
+.receipt.dark-card { background:#1a1a18; color:#f5f2eb; border-color:#f5f2eb; }
+
+.torn-top::before {
+  content:''; position:absolute; top:-9px; left:0; right:0; height:9px;
+  background:#f5f2eb;
+  clip-path:polygon(0% 100%,2% 0%,4% 100%,6% 0%,8% 100%,10% 0%,12% 100%,14% 0%,16% 100%,18% 0%,20% 100%,22% 0%,24% 100%,26% 0%,28% 100%,30% 0%,32% 100%,34% 0%,36% 100%,38% 0%,40% 100%,42% 0%,44% 100%,46% 0%,48% 100%,50% 0%,52% 100%,54% 0%,56% 100%,58% 0%,60% 100%,62% 0%,64% 100%,66% 0%,68% 100%,70% 0%,72% 100%,74% 0%,76% 100%,78% 0%,80% 100%,82% 0%,84% 100%,86% 0%,88% 100%,90% 0%,92% 100%,94% 0%,96% 100%,98% 0%,100% 100%);
+}
+.torn-bottom::after {
+  content:''; position:absolute; bottom:-9px; left:0; right:0; height:9px;
+  background:#f5f2eb;
+  clip-path:polygon(0% 0%,2% 100%,4% 0%,6% 100%,8% 0%,10% 100%,12% 0%,14% 100%,16% 0%,18% 100%,20% 0%,22% 100%,24% 0%,26% 100%,28% 0%,30% 100%,32% 0%,34% 100%,36% 0%,38% 100%,40% 0%,42% 100%,44% 0%,46% 100%,48% 0%,50% 100%,52% 0%,54% 100%,56% 0%,58% 100%,60% 0%,62% 100%,64% 0%,66% 100%,68% 0%,70% 100%,72% 0%,74% 100%,76% 0%,78% 100%,80% 0%,82% 100%,84% 0%,86% 100%,88% 0%,90% 100%,92% 0%,94% 100%,96% 0%,98% 100%,100% 0%);
+}
+
+.dash { height:1px; background:repeating-linear-gradient(to right,#1a1a18 0,#1a1a18 5px,transparent 5px,transparent 10px); margin:10px 0; }
+.dash.light { background:repeating-linear-gradient(to right,#f5f2eb 0,#f5f2eb 5px,transparent 5px,transparent 10px); }
+
+/* ── TEXT ── */
+.mono { font-family:'IBM Plex Mono',monospace; }
+.label { font-size:9px; letter-spacing:0.12em; opacity:0.5; text-transform:uppercase; }
+.center { text-align:center; }
+
+/* ── SCENE STATES ── */
+.scene-block { display:none; width:100%; }
+.scene-block.active { display:flex; flex-direction:column; align-items:center; }
+
+/* ── PROGRESS BAR ── */
+#progress-container {
+  position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
+  width:min(320px, calc(100vw - 48px)); z-index:10000;
+  display:none;
+}
+#progress-container.show { display:block; }
+#progress-track {
+  height:2px; background:rgba(245,242,235,0.15); position:relative;
+}
+#progress-fill {
+  height:100%; background:rgba(245,242,235,0.5); width:0%;
+  transition:width 0.1s linear;
+}
+#progress-labels {
+  display:flex; justify-content:space-between;
+  margin-top:8px; font-size:9px; color:rgba(245,242,235,0.3); letter-spacing:0.08em;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeIn   { from{opacity:0} to{opacity:1} }
+@keyframes fadeOut  { from{opacity:1} to{opacity:0} }
+@keyframes slideUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+@keyframes printIn  {
+  0%   { opacity:0; transform:translateY(-30px) scaleY(0.8); clip-path:inset(0 0 100% 0); }
+  40%  { opacity:1; transform:translateY(0) scaleY(1);       clip-path:inset(0 0 40% 0); }
+  100% { clip-path:inset(0 0 0% 0); }
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes ticker { from{transform:translateX(0)} to{transform:translateX(-50%)} }
+@keyframes scanline {
+  0%   { top:-10%; }
+  100% { top:110%; }
+}
+@keyframes glitch1 { 0%,100%{clip-path:inset(0 0 95% 0)} 50%{clip-path:inset(30% 0 50% 0)} }
+@keyframes glitch2 { 0%,100%{clip-path:inset(80% 0 0 0)} 50%{clip-path:inset(60% 0 20% 0)} }
+@keyframes countUp { from{opacity:0;transform:scale(0.8)} to{opacity:1;transform:scale(1)} }
+@keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.4)} 50%{box-shadow:0 0 0 8px rgba(34,197,94,0)} }
+
+/* ── SCANLINE ── */
+.scanline {
+  position:absolute; left:0; right:0; height:3px;
+  background:linear-gradient(transparent, rgba(245,242,235,0.06), transparent);
+  animation:scanline 3s linear infinite; pointer-events:none; z-index:10;
+}
+
+/* ── TYPING CURSOR ── */
+.cursor { display:inline-block; width:2px; height:1em; background:#1a1a18; vertical-align:middle; animation:blink 0.7s step-end infinite; margin-left:1px; }
+.cursor.light { background:#f5f2eb; }
+
+/* ── REACTION CHIPS ── */
+.rxn-chip {
+  display:inline-flex; align-items:center; gap:3px;
+  padding:3px 8px; font-size:11px; border:1px solid;
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  opacity:0; transform:scale(0.8);
+  transition:opacity 0.3s, transform 0.3s;
+}
+.rxn-chip.pop { opacity:1; transform:scale(1); }
+.rxn-chip.active { background:#1a1a18; color:#f5f2eb; border-color:#1a1a18; }
+.rxn-chip.inactive { background:transparent; color:#6b6b67; border-color:#c5c5bf; }
+
+/* ── PRESENCE DOTS ── */
+.p-dot {
+  width:8px; height:8px; border-radius:50%; background:#22c55e;
+  animation:pulse 2s ease infinite; display:inline-block;
+}
+
+/* ── TICKER ── */
+#ticker-wrap {
+  position:fixed; bottom:0; left:0; right:0; z-index:9998;
+  background:#f5f2eb; color:#1a1a18; padding:6px 0; overflow:hidden;
+  border-top:1px solid rgba(245,242,235,0.2); display:none;
+  font-size:10px; letter-spacing:0.1em;
+}
+#ticker-wrap.show { display:block; }
+#ticker-inner {
+  white-space:nowrap; display:inline-block;
+  animation:ticker 30s linear infinite;
+}
+
+/* ── TRANSITION ── */
+.scene-transition { animation:fadeIn 0.4s ease; }
+
+/* ── FINAL OVERLAY ── */
+#final-overlay {
+  position:fixed; inset:0; z-index:9998;
+  background:#f5f2eb; display:none;
+  align-items:center; justify-content:center;
+}
+#final-overlay.show { display:flex; animation:fadeIn 0.6s ease; }
+</style>
+</head>
+<body>
+
+<!-- ── TICKER ── -->
+<div id="ticker-wrap">
+  <div id="ticker-inner">
+    &nbsp;&nbsp;&nbsp; WHISPR · ANONYMOUS CONFESSIONS CO. · CREATE YOUR BOARD · SHARE THE CODE · YOUR GROUP CONFESSES · 100% ANONYMOUS · NO ACCOUNTS · NO TRACES · whispr.name.ng &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WHISPR · ANONYMOUS CONFESSIONS CO. · CREATE YOUR BOARD · SHARE THE CODE · YOUR GROUP CONFESSES · 100% ANONYMOUS · NO ACCOUNTS · NO TRACES · whispr.name.ng &nbsp;&nbsp;&nbsp;
+  </div>
+</div>
+
+<!-- ── SKIP ── -->
+<button id="skip-btn" onclick="skipIntro()">SKIP ✕</button>
+
+<!-- ── PROGRESS ── -->
+<div id="progress-container">
+  <div id="progress-track"><div id="progress-fill"></div></div>
+  <div id="progress-labels">
+    <span id="scene-label">INTRODUCING...</span>
+    <span id="scene-count">1 / 9</span>
+  </div>
+</div>
+
+<!-- ── INTRO ── -->
+<div id="intro">
+  <div class="scanline"></div>
+  <div id="scene">
+
+    <!-- S0: COLD OPEN -->
+    <div class="scene-block active" id="s0">
+      <div style="text-align:center;">
+        <div id="s0-text" style="font-size:11px; color:rgba(245,242,235,0.3); letter-spacing:0.15em; margin-bottom:24px; opacity:0;"></div>
+        <div id="s0-logo" style="font-size:72px; font-weight:700; letter-spacing:0.12em; opacity:0; line-height:1;">WHISPR</div>
+        <div id="s0-sub" style="font-size:10px; color:rgba(245,242,235,0.4); letter-spacing:0.15em; margin-top:8px; opacity:0;">ANONYMOUS CONFESSIONS CO.</div>
+      </div>
+    </div>
+
+    <!-- S1: THE PROBLEM -->
+    <div class="scene-block" id="s1">
+      <div style="text-align:center; max-width:380px;">
+        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:20px;">THE PROBLEM</div>
+        <div id="s1-line1" style="font-size:clamp(18px,4vw,28px); font-weight:700; line-height:1.3; margin-bottom:12px; opacity:0;">Your group has things<br>they want to say.</div>
+        <div id="s1-line2" style="font-size:clamp(18px,4vw,28px); font-weight:700; line-height:1.3; opacity:0; color:rgba(245,242,235,0.4);">But not out loud.</div>
+      </div>
+    </div>
+
+    <!-- S2: RECEIPT INTRO -->
+    <div class="scene-block" id="s2">
+      <div class="receipt torn-top torn-bottom" id="s2-receipt" style="opacity:0; transform:translateY(-20px) rotate(-1deg); max-width:320px; transition:all 0.6s cubic-bezier(0.16,1,0.3,1);">
+        <div class="center" style="margin-bottom:12px;">
+          <div style="font-size:18px; font-weight:700; letter-spacing:0.15em;">WHISPR</div>
+          <div class="label">ANONYMOUS CONFESSIONS CO.</div>
+        </div>
+        <div class="dash"></div>
+        <div id="s2-typed" style="font-size:13px; line-height:1.7; min-height:60px; margin:10px 0; font-style:italic;"></div>
+        <div class="dash"></div>
+        <div style="display:flex; justify-content:space-between; font-size:10px; color:#6b6b67; margin-top:8px;">
+          <span>ANON: G247</span>
+          <span>JUST NOW</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- S3: ANONYMOUS -->
+    <div class="scene-block" id="s3">
+      <div style="text-align:center; margin-bottom:24px; width:100%;">
+        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 01</div>
+        <div id="s3-title" style="font-size:clamp(20px,4vw,32px); font-weight:700; opacity:0;">100% Anonymous.</div>
+      </div>
+      <div class="receipt" style="max-width:340px; width:100%;">
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#f5f2eb; border:1px solid #e0dbd0;">
+            <span class="label" style="opacity:0.4;">POSTED BY</span>
+            <span id="s3-name" style="font-weight:700; font-size:13px;">???</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#f5f2eb; border:1px solid #e0dbd0;">
+            <span class="label" style="opacity:0.4;">IP ADDRESS</span>
+            <span style="font-weight:700;">???.???.???.???</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#f5f2eb; border:1px solid #e0dbd0;">
+            <span class="label" style="opacity:0.4;">DEVICE</span>
+            <span style="font-weight:700;">UNKNOWN</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; padding:8px; background:#1a1a18; color:#f5f2eb;">
+            <span style="opacity:0.5; font-size:9px; letter-spacing:0.1em;">IDENTITY</span>
+            <span style="font-weight:700; letter-spacing:0.08em;" id="s3-identity">UNTRACEABLE</span>
+          </div>
+        </div>
+        <div class="dash" style="margin-top:12px;"></div>
+        <div style="text-align:center; font-size:10px; color:#6b6b67; margin-top:8px;">NO ACCOUNTS · NO NAMES · NO TRACES</div>
+      </div>
+    </div>
+
+    <!-- S4: LIVE -->
+    <div class="scene-block" id="s4">
+      <div style="text-align:center; margin-bottom:24px; width:100%;">
+        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 02 + 03</div>
+        <div style="font-size:clamp(20px,4vw,32px); font-weight:700;">Real-time. Live presence.</div>
+      </div>
+      <div class="receipt" style="max-width:340px; width:100%;">
+        <div style="background:#1a1a18; color:#f5f2eb; padding:12px 14px; margin:-24px -22px 16px; text-align:center;">
+          <div class="label" style="color:rgba(245,242,235,0.4); margin-bottom:4px;">RECEIPTS ISSUED</div>
+          <div style="font-size:42px; font-weight:700; letter-spacing:0.1em;" id="s4-counter">0000</div>
+          <div style="font-size:9px; color:rgba(245,242,235,0.3); margin-top:3px; letter-spacing:0.06em;">LIVE TOTAL</div>
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #c5c5bf;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="p-dot"></span>
+            <span style="font-size:10px; color:#6b6b67;">ONLINE NOW</span>
+          </div>
+          <span style="font-weight:700; font-size:14px;" id="s4-presence">1 PERSON</span>
+        </div>
+        <div style="margin-top:12px;" id="s4-feed">
+          <!-- posts appear here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- S5: REACTIONS -->
+    <div class="scene-block" id="s5">
+      <div style="text-align:center; margin-bottom:24px; width:100%;">
+        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 04</div>
+        <div style="font-size:clamp(20px,4vw,32px); font-weight:700;">React. Anonymously.</div>
+      </div>
+      <div class="receipt" style="max-width:340px; width:100%;">
+        <div class="dash"></div>
+        <div style="font-size:13px; line-height:1.7; margin:10px 0; font-style:italic; color:#3d3d3a;">"My entire friend group knows I like them and nobody told me 💀"</div>
+        <div class="dash"></div>
+        <div id="s5-rxns" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:10px;">
+          <span class="rxn-chip active">❤️ <span id="rxn-heart">0</span></span>
+          <span class="rxn-chip active">💀 <span id="rxn-skull">0</span></span>
+          <span class="rxn-chip inactive">😭 <span id="rxn-cry">0</span></span>
+          <span class="rxn-chip inactive">😂 <span id="rxn-laugh">0</span></span>
+          <span class="rxn-chip inactive">🔥 <span id="rxn-fire">0</span></span>
+          <span class="rxn-chip inactive">👀 <span id="rxn-eyes">0</span></span>
+          <span class="rxn-chip inactive">🤯 <span id="rxn-mind">0</span></span>
+          <span class="rxn-chip inactive">🫂 <span id="rxn-hug">0</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- S6: EXPIRY + PASSWORD -->
+    <div class="scene-block" id="s6">
+      <div style="text-align:center; margin-bottom:20px; width:100%;">
+        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 07 + 08</div>
+        <div style="font-size:clamp(18px,3.5vw,28px); font-weight:700;">Self-destruct. Password lock.</div>
+      </div>
+      <div style="display:flex; gap:12px; width:100%; max-width:400px;">
+        <div class="receipt" style="flex:1;">
+          <div style="text-align:center; margin-bottom:8px;">
+            <div class="label">EXPIRES IN</div>
+            <div style="font-size:28px; font-weight:700; letter-spacing:0.1em; color:#f59e0b;" id="s6-timer">23:59:47</div>
+          </div>
+          <div class="dash"></div>
+          <div style="font-size:10px; color:#6b6b67; text-align:center; margin-top:8px; line-height:1.6;">ALL DATA DELETED<br>WHEN ZERO</div>
+        </div>
+        <div class="receipt" style="flex:1;">
+          <div style="text-align:center; margin-bottom:8px;">
+            <div class="label">PROTECTED</div>
+            <div style="font-size:24px; margin-top:4px;">🔒</div>
+          </div>
+          <div class="dash"></div>
+          <div style="display:flex; gap:4px; justify-content:center; margin-top:8px;" id="s6-dots">
+            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
+            <div style="width:8px;height:8px;border-radius:50%;border:1.5px solid #9b9b96;"></div>
+          </div>
+          <div style="font-size:10px; color:#6b6b67; text-align:center; margin-top:8px; line-height:1.6;">ONLY YOUR GROUP<br>CAN ENTER</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S7: SHARE -->
+    <div class="scene-block" id="s7">
+      <div style="text-align:center; margin-bottom:24px; width:100%;">
+        <div style="font-size:11px; color:rgba(245,242,235,0.4); letter-spacing:0.12em; margin-bottom:8px;">FEATURE 09</div>
+        <div style="font-size:clamp(20px,4vw,32px); font-weight:700;">Share to any platform.</div>
+      </div>
+      <div class="receipt" style="max-width:340px; width:100%;">
+        <div style="font-size:13px; line-height:1.7; margin-bottom:12px; font-style:italic; color:#3d3d3a; padding-bottom:12px; border-bottom:1px dashed #c5c5bf;">"I've been pretending to like my best friend's cooking for 2 years"</div>
+        <div id="s7-platforms" style="display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-x">X / TWITTER</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-wa">WHATSAPP</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-ig">INSTAGRAM</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-tt">TIKTOK</div>
+          <div style="display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;" id="p-th">THREADS</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- S8: FINALE -->
+    <div class="scene-block" id="s8">
+      <div class="receipt torn-top torn-bottom" style="max-width:340px; width:100%; text-align:center;">
+        <div style="font-size:32px; font-weight:700; letter-spacing:0.15em; margin-bottom:6px;">WHISPR</div>
+        <div class="label" style="margin-bottom:12px;">ANONYMOUS CONFESSIONS CO.</div>
+        <div class="dash"></div>
+        <div style="font-size:12px; line-height:2; color:#3d3d3a; margin:12px 0;">
+          ANONYMOUS POSTS<br>
+          REAL-TIME UPDATES<br>
+          LIVE PRESENCE<br>
+          REACTIONS & REPLIES<br>
+          IMAGE + VIDEO SUPPORT<br>
+          BOARD EXPIRY<br>
+          PASSWORD PROTECTION<br>
+          SOCIAL SHARE CARDS
+        </div>
+        <div class="dash"></div>
+        <div style="display:flex; justify-content:space-between; font-size:13px; font-weight:700; margin-top:10px;">
+          <span>TOTAL COST</span><span>$0.00</span>
+        </div>
+        <div class="dash" style="margin-top:10px;"></div>
+        <div id="s8-cta" style="margin-top:14px; padding:12px; background:#1a1a18; color:#f5f2eb; font-size:13px; font-weight:700; letter-spacing:0.1em; cursor:pointer; opacity:0; transition:opacity 0.4s;" onclick="skipIntro()">
+          CREATE YOUR BOARD →
+        </div>
+        <div style="margin-top:12px; font-size:10px; color:#9b9b96; letter-spacing:0.15em;">|||||| ||| || |||| ||| | ||||</div>
+        <div style="font-size:9px; color:#9b9b96; margin-top:4px;">whispr.name.ng</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── FINAL LANDING ── -->
+<div id="final-overlay">
+  <div style="text-align:center; padding:24px; font-family:'IBM Plex Mono',monospace;">
+    <div style="font-size:48px; font-weight:700; letter-spacing:0.12em; margin-bottom:8px;">WHISPR</div>
+    <div style="font-size:11px; color:#6b6b67; letter-spacing:0.1em; margin-bottom:32px;">ANONYMOUS CONFESSIONS CO.</div>
+    <div style="display:flex; flex-direction:column; gap:10px; max-width:280px; margin:0 auto;">
+      <a href="https://whispr.name.ng" style="display:block; padding:14px; background:#1a1a18; color:#f5f2eb; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.1em; text-align:center;">[01] CREATE A BOARD</a>
+      <a href="https://whispr.name.ng" style="display:block; padding:14px; background:transparent; color:#1a1a18; text-decoration:none; font-size:12px; font-weight:700; letter-spacing:0.1em; text-align:center; border:1px solid #1a1a18;">[02] JOIN WITH CODE</a>
+      <button onclick="replayIntro()" style="padding:10px; background:transparent; border:1px dashed #c5c5bf; color:#9b9b96; font-family:'IBM Plex Mono',monospace; font-size:11px; cursor:pointer; letter-spacing:0.08em;">▶ WATCH INTRO AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// WEB AUDIO ENGINE
+// ─────────────────────────────────────────
+let audioCtx = null
+
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+  return audioCtx
+}
+
+// Thermal printer — narrow band noise burst
+function soundPrinter(duration = 0.3) {
+  try {
+    const ctx = getCtx()
+    const buf = ctx.createBuffer(1, ctx.sampleRate * duration, ctx.sampleRate)
+    const data = buf.getChannelData(0)
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.08))
+    }
+    const src    = ctx.createBufferSource()
+    const filter = ctx.createBiquadFilter()
+    const gain   = ctx.createGain()
+    filter.type = 'bandpass'; filter.frequency.value = 3200; filter.Q.value = 0.8
+    gain.gain.setValueAtTime(0.18, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
+    src.buffer = buf
+    src.connect(filter); filter.connect(gain); gain.connect(ctx.destination)
+    src.start(); src.stop(ctx.currentTime + duration)
+  } catch(e) {}
+}
+
+// Keyboard click — short transient
+function soundKey() {
+  try {
+    const ctx  = getCtx()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const now  = ctx.currentTime
+    osc.type = 'square'; osc.frequency.setValueAtTime(800, now)
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.04)
+    gain.gain.setValueAtTime(0.06, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(now); osc.stop(now + 0.05)
+  } catch(e) {}
+}
+
+// Notification ding
+function soundDing() {
+  try {
+    const ctx  = getCtx()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const now  = ctx.currentTime
+    osc.type = 'sine'; osc.frequency.setValueAtTime(1200, now)
+    osc.frequency.exponentialRampToValueAtTime(900, now + 0.3)
+    gain.gain.setValueAtTime(0.12, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(now); osc.stop(now + 0.5)
+  } catch(e) {}
+}
+
+// Cash register — two tones
+function soundRegister() {
+  try {
+    const ctx = getCtx()
+    const now = ctx.currentTime
+    ;[880, 1320].forEach((freq, i) => {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'; osc.frequency.value = freq
+      gain.gain.setValueAtTime(0, now + i * 0.08)
+      gain.gain.linearRampToValueAtTime(0.15, now + i * 0.08 + 0.01)
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.3)
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.35)
+    })
+  } catch(e) {}
+}
+
+// Whoosh — sweep down
+function soundWhoosh() {
+  try {
+    const ctx  = getCtx()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const now  = ctx.currentTime
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(600, now)
+    osc.frequency.exponentialRampToValueAtTime(80, now + 0.25)
+    gain.gain.setValueAtTime(0.08, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(now); osc.stop(now + 0.3)
+  } catch(e) {}
+}
+
+// Tick — for countdown
+function soundTick() {
+  try {
+    const ctx  = getCtx()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const now  = ctx.currentTime
+    osc.type = 'square'; osc.frequency.value = 1600
+    gain.gain.setValueAtTime(0.04, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(now); osc.stop(now + 0.02)
+  } catch(e) {}
+}
+
+// Pop — for reactions appearing
+function soundPop() {
+  try {
+    const ctx  = getCtx()
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const now  = ctx.currentTime
+    osc.type = 'sine'; osc.frequency.setValueAtTime(400, now)
+    osc.frequency.exponentialRampToValueAtTime(700, now + 0.06)
+    gain.gain.setValueAtTime(0.1, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1)
+    osc.connect(gain); gain.connect(ctx.destination)
+    osc.start(now); osc.stop(now + 0.1)
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────────
+// SCENE ENGINE
+// ─────────────────────────────────────────
+let currentScene = 0
+const totalScenes = 9
+let sceneTimeout = null
+let introActive = true
+
+const sceneLabels = [
+  'COLD OPEN','SETTING THE SCENE','YOUR CONFESSION','ANONYMOUS','LIVE & REAL-TIME','REACTIONS','EXPIRY & LOCK','SHARE CARDS','FULL FEATURE LIST'
+]
+
+function showScene(n) {
+  document.querySelectorAll('.scene-block').forEach(b => b.classList.remove('active'))
+  const block = document.getElementById('s' + n)
+  if (block) { block.classList.add('active'); block.classList.add('scene-transition') }
+
+  document.getElementById('scene-label').textContent = sceneLabels[n] || ''
+  document.getElementById('scene-count').textContent = (n+1) + ' / ' + totalScenes
+
+  const fill = ((n) / (totalScenes - 1)) * 100
+  document.getElementById('progress-fill').style.width = fill + '%'
+}
+
+function nextScene() {
+  currentScene++
+  if (currentScene >= totalScenes) { endIntro(); return }
+  showScene(currentScene)
+  runScene(currentScene)
+}
+
+function scheduleNext(ms) {
+  if (sceneTimeout) clearTimeout(sceneTimeout)
+  sceneTimeout = setTimeout(nextScene, ms)
+}
+
+// ─────────────────────────────────────────
+// SCENE RUNNERS
+// ─────────────────────────────────────────
+function runScene(n) {
+  if (!introActive) return
+  const runners = [runS0, runS1, runS2, runS3, runS4, runS5, runS6, runS7, runS8]
+  runners[n]?.()
+}
+
+// S0 — Cold open: WHISPR logo fades in
+function runS0() {
+  const text = document.getElementById('s0-text')
+  const logo = document.getElementById('s0-logo')
+  const sub  = document.getElementById('s0-sub')
+
+  setTimeout(() => {
+    text.style.opacity = '1'; text.style.transition = 'opacity 0.6s'
+    text.textContent = 'YOUR GROUP HAS SECRETS.'
+    soundPrinter(0.4)
+  }, 400)
+
+  setTimeout(() => {
+    logo.style.opacity = '1'; logo.style.transition = 'opacity 0.8s'
+    soundRegister()
+  }, 1200)
+
+  setTimeout(() => {
+    sub.style.opacity = '1'; sub.style.transition = 'opacity 0.6s'
+  }, 1800)
+
+  scheduleNext(3500)
+}
+
+// S1 — The problem
+function runS1() {
+  const l1 = document.getElementById('s1-line1')
+  const l2 = document.getElementById('s1-line2')
+
+  setTimeout(() => {
+    l1.style.opacity = '1'; l1.style.transition = 'opacity 0.6s, transform 0.6s'
+    l1.style.transform = 'translateY(0)'; soundPrinter(0.2)
+  }, 300)
+  setTimeout(() => {
+    l2.style.opacity = '1'; l2.style.transition = 'opacity 0.6s'
+    soundPrinter(0.2)
+  }, 1200)
+  scheduleNext(3200)
+}
+
+// S2 — Receipt prints in, confession types
+function runS2() {
+  const receipt = document.getElementById('s2-receipt')
+  const typed   = document.getElementById('s2-typed')
+
+  setTimeout(() => {
+    receipt.style.opacity = '1'; receipt.style.transform = 'translateY(0) rotate(0deg)'
+    soundPrinter(0.6)
+  }, 200)
+
+  const confession = 'I told my lecturer I had malaria. I was watching Netflix the whole time.'
+  setTimeout(() => {
+    let i = 0
+    const iv = setInterval(() => {
+      if (!introActive) { clearInterval(iv); return }
+      typed.textContent = confession.slice(0, i) + '|'
+      if (i % 3 === 0) soundKey()
+      i++
+      if (i > confession.length) {
+        clearInterval(iv)
+        typed.textContent = confession
+        soundDing()
+      }
+    }, 45)
+  }, 800)
+
+  scheduleNext(5500)
+}
+
+// S3 — Anonymous: identity revealed as unknown
+function runS3() {
+  const title    = document.getElementById('s3-title')
+  const nameEl   = document.getElementById('s3-name')
+  const identity = document.getElementById('s3-identity')
+
+  setTimeout(() => { title.style.opacity = '1'; title.style.transition = 'opacity 0.5s'; soundWhoosh() }, 200)
+
+  const fakeNames = ['VICTOR OCHE', 'SARAH K.', 'MICHAEL A.', 'TUNDE B.', 'ADAEZE N.']
+  let ni = 0
+  const glitch = setInterval(() => {
+    if (!introActive) { clearInterval(glitch); return }
+    nameEl.textContent = fakeNames[ni % fakeNames.length]
+    soundKey()
+    ni++
+  }, 120)
+
+  setTimeout(() => {
+    clearInterval(glitch)
+    nameEl.textContent = 'G247'
+    nameEl.style.color = '#22c55e'
+    soundDing()
+  }, 1800)
+
+  scheduleNext(4500)
+}
+
+// S4 — Live counter + presence
+function runS4() {
+  const counter  = document.getElementById('s4-counter')
+  const presence = document.getElementById('s4-presence')
+  const feed     = document.getElementById('s4-feed')
+  let count = 38, people = 1
+
+  const iv = setInterval(() => {
+    if (!introActive) { clearInterval(iv); return }
+    count++
+    counter.textContent = String(count).padStart(4, '0')
+    counter.style.color = '#4ade80'
+    soundDing()
+    setTimeout(() => counter.style.color = '', 400)
+
+    // Add post to feed
+    const posts = [
+      'I studied for 5 mins and guessed the rest.',
+      'I pretend to be busy so nobody calls me.',
+      '"I never got your message" was a lie.',
+    ]
+    if (count <= 41) {
+      const p = document.createElement('div')
+      p.style.cssText = 'font-size:11px; line-height:1.6; padding:6px 0; border-bottom:1px dashed #e0dbd0; color:#3d3d3a; font-style:italic; opacity:0; transition:opacity 0.4s;'
+      p.textContent = posts[count - 39] || ''
+      feed.appendChild(p)
+      setTimeout(() => p.style.opacity = '1', 50)
+      soundPrinter(0.3)
+    }
+
+    if (people < 4) { people++; presence.textContent = people + ' PEOPLE'; }
+  }, 1200)
+
+  scheduleNext(5500)
+}
+
+// S5 — Reactions pop in
+function runS5() {
+  const chips = document.querySelectorAll('.rxn-chip')
+  chips.forEach((c, i) => {
+    setTimeout(() => {
+      c.classList.add('pop')
+      soundPop()
+    }, i * 120 + 300)
+  })
+
+  // Animate counts up
+  const counts = { heart: 12, skull: 34, cry: 8, laugh: 5, fire: 7, eyes: 11, mind: 4, hug: 3 }
+  Object.entries(counts).forEach(([key, max]) => {
+    let n = 0
+    const el = document.getElementById('rxn-' + key)
+    const iv = setInterval(() => {
+      if (!introActive) { clearInterval(iv); return }
+      n = Math.min(n + Math.ceil(max / 12), max)
+      if (el) el.textContent = n
+      if (n >= max) clearInterval(iv)
+    }, 80)
+  })
+
+  scheduleNext(4500)
+}
+
+// S6 — Expiry + password
+function runS6() {
+  const timer = document.getElementById('s6-timer')
+  let secs = 86387
+  const iv = setInterval(() => {
+    if (!introActive) { clearInterval(iv); return }
+    secs--
+    const h = Math.floor(secs / 3600)
+    const m = Math.floor((secs % 3600) / 60)
+    const s = secs % 60
+    timer.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    soundTick()
+  }, 80)
+
+  // Password dots fill
+  const dots = document.querySelectorAll('#s6-dots > div')
+  dots.forEach((d, i) => {
+    setTimeout(() => {
+      d.style.background = '#1a1a18'; d.style.borderColor = '#1a1a18'
+      soundKey()
+    }, i * 150 + 600)
+  })
+
+  scheduleNext(4000)
+}
+
+// S7 — Share platforms cycle
+function runS7() {
+  const platforms = ['p-x','p-wa','p-ig','p-tt','p-th']
+  let ci = 0
+  const iv = setInterval(() => {
+    if (!introActive) { clearInterval(iv); return }
+    document.getElementById(platforms[(ci + platforms.length - 1) % platforms.length]).style.cssText = 'display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #c5c5bf;'
+    const el = document.getElementById(platforms[ci])
+    el.style.cssText = 'display:flex; justify-content:space-between; padding:8px 10px; font-size:11px; border:1px solid #1a1a18; background:#1a1a18; color:#f5f2eb;'
+    el.innerHTML = el.textContent.trim() + ' <span style="opacity:0.6;">✓</span>'
+    soundKey()
+    ci = (ci + 1) % platforms.length
+  }, 600)
+
+  scheduleNext(4000)
+}
+
+// S8 — Finale
+function runS8() {
+  soundRegister()
+  setTimeout(() => {
+    document.getElementById('s8-cta').style.opacity = '1'
+  }, 800)
+
+  // Don't auto-advance — wait for user
+  document.getElementById('progress-fill').style.width = '100%'
+  document.getElementById('scene-count').textContent = '✓ DONE'
+}
+
+// ─────────────────────────────────────────
+// LIFECYCLE
+// ─────────────────────────────────────────
+function skipIntro() {
+  introActive = false
+  if (sceneTimeout) clearTimeout(sceneTimeout)
+  const intro = document.getElementById('intro')
+  intro.style.transition = 'opacity 0.5s'
+  intro.style.opacity = '0'
+  setTimeout(() => {
+    intro.style.display = 'none'
+    document.getElementById('final-overlay').classList.add('show')
+    document.getElementById('ticker-wrap').classList.remove('show')
+    document.getElementById('progress-container').classList.remove('show')
+    document.getElementById('skip-btn').classList.remove('show')
+    document.body.style.overflow = 'auto'
+    // Remember they've seen it
+    localStorage.setItem('whispr_intro_seen', '1')
+  }, 500)
+}
+
+function replayIntro() {
+  document.getElementById('final-overlay').classList.remove('show')
+  document.getElementById('intro').style.cssText = ''
+  document.body.style.overflow = 'hidden'
+  currentScene = 0
+  introActive = true
+  // Reset all scenes
+  document.querySelectorAll('.scene-block').forEach(b => b.classList.remove('active'))
+  showScene(0)
+  document.getElementById('skip-btn').classList.add('show')
+  document.getElementById('progress-container').classList.add('show')
+  document.getElementById('ticker-wrap').classList.add('show')
+  // Reset scene 3
+  document.getElementById('s3-name').style.color = ''
+  document.getElementById('s3-name').textContent = '???'
+  document.getElementById('s4-feed').innerHTML = ''
+  document.getElementById('s4-counter').textContent = '0000'
+  document.getElementById('s4-counter').style.color = ''
+  runScene(0)
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+window.addEventListener('load', () => {
+  const hasSeen = localStorage.getItem('whispr_intro_seen')
+
+  if (hasSeen) {
+    // Returning user — show landing directly with replay option
+    document.getElementById('intro').style.display = 'none'
+    document.getElementById('final-overlay').classList.add('show')
+    return
+  }
+
+  // First visit — auto-play
+  document.getElementById('skip-btn').classList.add('show')
+  document.getElementById('progress-container').classList.add('show')
+  document.getElementById('ticker-wrap').classList.add('show')
+  showScene(0)
+
+  // Start on first interaction (browser requires gesture for audio)
+  let started = false
+  function start() {
+    if (started) return; started = true
+    document.removeEventListener('click', start)
+    document.removeEventListener('keydown', start)
+    runScene(0)
+  }
+
+  // Auto-start after short delay (visuals work without audio)
+  runScene(0) // visuals start immediately
+  document.addEventListener('click', start)
+  document.addEventListener('keydown', start)
+})
+</script>
+</body>
+</html>
