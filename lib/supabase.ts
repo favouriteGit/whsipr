@@ -12,6 +12,7 @@ export type Board = {
   created_at: string
   expires_at: string | null
   has_password: boolean
+  is_expired: boolean
 }
 
 export type Confession = {

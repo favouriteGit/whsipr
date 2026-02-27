@@ -59,7 +59,7 @@ export default function BoardPage() {
       const b = await getBoardByCode(code)
       if (!b) { setNotFound(true); setLoading(false); return }
       setBoard(b)
-      if (b.expires_at && new Date(b.expires_at).getTime() < Date.now()) {
+      if (b.is_expired || (b.expires_at && new Date(b.expires_at).getTime() < Date.now())) {
         setIsExpired(true); setLoading(false); return
       }
       // Check password gate
