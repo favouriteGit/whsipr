@@ -894,26 +894,28 @@ function PasswordGate({ board, onSuccess }: { board: Board; onSuccess: () => voi
    No iframe · No external file · Works on any device
    ═══════════════════════════════════════════════════════════════ */
 function WhisprIntro({ onDone }: { onDone: () => void }) {
-  const canvasRef = useRef<HTMLDivElement>(null)
-  const rafRef    = useRef<number>(0)
-  const acRef     = useRef<AudioContext | null>(null)
-  const mgRef     = useRef<GainNode | null>(null)
-  const beatRef   = useRef(false)
-  const killRef   = useRef(false)
-  const [cur, setCur]       = useState(0)
-  const [frac, setFrac]     = useState(0)
-  const [paused, setPaused] = useState(false)
-  const [dir, setDir]       = useState(1)
-  const TOTAL = INTRO_SLIDES.length
-  const durRef    = useRef(0)
-  const startRef  = useRef(0)
+  const rafRef     = useRef<number>(0)
+  const acRef      = useRef<AudioContext | null>(null)
+  const mgRef      = useRef<GainNode | null>(null)
+  const beatRef    = useRef(false)
+  const killRef    = useRef(false)
+  const durRef     = useRef(0)
+  const startRef   = useRef(0)
   const elapsedRef = useRef(0)
-  const fracRef   = useRef(0)
-  const curRef    = useRef(0)
-  const pausedRef = useRef(false)
+  const fracRef    = useRef(0)
+  const curRef     = useRef(0)
+  const pausedRef  = useRef(false)
 
-  // ── Audio helpers ──
-  function ac() {
+  const [cur,    setCur]    = useState(0)
+  const [frac,   setFrac]   = useState(0)
+  const [paused, setPaused] = useState(false)
+  const [dir,    setDir]    = useState(1)
+
+  const SLIDES = INTRO_SLIDES
+  const TOTAL  = SLIDES.length
+
+  /* ── Audio ── */
+  function getAC() {
     if (!acRef.current) {
       acRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
       mgRef.current = acRef.current.createGain()
@@ -927,7 +929,7 @@ function WhisprIntro({ onDone }: { onDone: () => void }) {
 
   function kick(t: number) {
     try {
-      const c=ac(),o=c.createOscillator(),g=c.createGain()
+      const c=getAC(),o=c.createOscillator(),g=c.createGain()
       o.frequency.setValueAtTime(155,t); o.frequency.exponentialRampToValueAtTime(36,t+0.1)
       g.gain.setValueAtTime(1.1,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3)
       o.connect(g); g.connect(mg()); o.start(t); o.stop(t+0.35)
@@ -935,7 +937,7 @@ function WhisprIntro({ onDone }: { onDone: () => void }) {
   }
   function snare(t: number) {
     try {
-      const c=ac()
+      const c=getAC()
       const buf=c.createBuffer(1,Math.floor(c.sampleRate*0.14),c.sampleRate)
       const d=buf.getChannelData(0)
       for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,1.5)
@@ -951,29 +953,29 @@ function WhisprIntro({ onDone }: { onDone: () => void }) {
   }
   function hat(t: number, vel=0.13, open=false) {
     try {
-      const c=ac(),dur=open?0.12:0.03
-      const buf=c.createBuffer(1,Math.floor(c.sampleRate*dur),c.sampleRate)
+      const c=getAC(),dur2=open?0.12:0.03
+      const buf=c.createBuffer(1,Math.floor(c.sampleRate*dur2),c.sampleRate)
       const d=buf.getChannelData(0)
       for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*(open?Math.exp(-i/(c.sampleRate*0.04)):1)
       const src=c.createBufferSource(),hp=c.createBiquadFilter(),g=c.createGain()
       hp.type='highpass'; hp.frequency.value=8500
-      g.gain.setValueAtTime(vel,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur)
-      src.buffer=buf; src.connect(hp); hp.connect(g); g.connect(mg()); src.start(t); src.stop(t+dur+0.01)
+      g.gain.setValueAtTime(vel,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur2)
+      src.buffer=buf; src.connect(hp); hp.connect(g); g.connect(mg()); src.start(t); src.stop(t+dur2+0.01)
     } catch(e){}
   }
-  function bassNote(t: number,freq: number,dur: number) {
+  function bassNote(t: number, freq: number, dur2: number) {
     try {
-      const c=ac(),o=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain()
+      const c=getAC(),o=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain()
       o.type='sawtooth'; o.frequency.value=freq
       lp.type='lowpass'; lp.frequency.value=290; lp.Q.value=1.6
-      g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.7,t+0.008); g.gain.exponentialRampToValueAtTime(0.001,t+dur)
-      o.connect(lp); lp.connect(g); g.connect(mg()); o.start(t); o.stop(t+dur+0.02)
+      g.gain.setValueAtTime(0.001,t); g.gain.linearRampToValueAtTime(0.7,t+0.008); g.gain.exponentialRampToValueAtTime(0.001,t+dur2)
+      o.connect(lp); lp.connect(g); g.connect(mg()); o.start(t); o.stop(t+dur2+0.02)
     } catch(e){}
   }
-  function chordStab(t: number,freqs: number[]) {
+  function chordStab(t: number, freqs: number[]) {
     freqs.forEach(f=>{
       try {
-        const c=ac(),o=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain()
+        const c=getAC(),o=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain()
         o.type='sawtooth'; o.frequency.value=f
         lp.type='lowpass'; lp.frequency.value=700; lp.Q.value=1.0
         g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.055,t+0.012); g.gain.exponentialRampToValueAtTime(0.001,t+0.22)
@@ -996,151 +998,161 @@ function WhisprIntro({ onDone }: { onDone: () => void }) {
 
   function startBeat() {
     if (beatRef.current) return
-    beatRef.current = true; killRef.current = false
-    const c = ac()
+    beatRef.current=true; killRef.current=false
+    const c=getAC()
     function sched(t: number, step: number) {
       if (killRef.current) { beatRef.current=false; return }
-      const s = step % 32
-      if (s===0||s===8) kick(t)
-      if (s===4||s===12) snare(t)
-      if (s%2===0) hat(t,0.13,false)
-      if (s===6||s===14||s===22||s===30) hat(t,0.11,true)
-      if (s===2||s===10||s===18||s===26) hat(t,0.04,false)
+      const s=step%32
+      if(s===0||s===8) kick(t)
+      if(s===4||s===12) snare(t)
+      if(s%2===0) hat(t,0.13,false)
+      if(s===6||s===14||s===22||s===30) hat(t,0.11,true)
+      if(s===2||s===10||s===18||s===26) hat(t,0.04,false)
       BASS_PAT.forEach(b=>{ if(b[0]===s) bassNote(t,b[1],b[2]*STEP) })
       CHORD_PAT.forEach(ch=>{ if(ch[0]===s) chordStab(t,ch[1]) })
-      if (Math.random()>0.9) {
-        try {
-          const c2=ac(),buf=c2.createBuffer(1,Math.floor(c2.sampleRate*0.006),c2.sampleRate)
+      if(Math.random()>0.9){
+        try{
+          const c2=getAC(),buf=c2.createBuffer(1,Math.floor(c2.sampleRate*0.006),c2.sampleRate)
           const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(c2.sampleRate*0.0015))
           const src=c2.createBufferSource(),g=c2.createGain(); g.gain.value=0.04
           src.buffer=buf; src.connect(g); g.connect(mg()); src.start(t)
-        } catch(e){}
+        }catch(e){}
       }
-      const next = t+STEP
-      const delay = Math.max(0,(next-c.currentTime-0.08)*1000)
-      setTimeout(()=>sched(next,step+1), delay)
+      const next=t+STEP
+      const delay=Math.max(0,(next-c.currentTime-0.08)*1000)
+      setTimeout(()=>sched(next,step+1),delay)
     }
-    sched(c.currentTime+0.1, 0)
+    sched(c.currentTime+0.1,0)
   }
 
   function stopAudio() {
     killRef.current=true; beatRef.current=false
-    if (acRef.current) { try { acRef.current.suspend() } catch(e){} }
+    if(acRef.current){ try{ acRef.current.suspend() }catch(e){} }
   }
 
-  // ── Progress engine ──
-  function runProg(dur: number, startFrac=0) {
+  /* ── Progress ── */
+  function runProg(slideDur: number, startFrac=0) {
     cancelAnimationFrame(rafRef.current)
-    durRef.current = dur
-    const remaining = dur*(1-startFrac)
-    startRef.current = performance.now()
-    pausedRef.current = false
-
+    durRef.current=slideDur
+    const remaining=slideDur*(1-startFrac)
+    startRef.current=performance.now()
+    pausedRef.current=false
     function tick(now: number) {
-      if (pausedRef.current) return
-      const dt = now - startRef.current
-      const f = startFrac + Math.min(dt/remaining,1)*(1-startFrac)
-      fracRef.current = f
+      if(pausedRef.current) return
+      const dt=now-startRef.current
+      const f=startFrac+Math.min(dt/remaining,1)*(1-startFrac)
+      fracRef.current=f
       setFrac(f)
-      if (f>=1) { advanceCur(1) }
-      else { rafRef.current = requestAnimationFrame(tick) }
+      if(f>=1){ goTo(curRef.current+1,1) }
+      else{ rafRef.current=requestAnimationFrame(tick) }
     }
-    rafRef.current = requestAnimationFrame(tick)
+    rafRef.current=requestAnimationFrame(tick)
   }
 
-  function advanceCur(delta: number) {
+  function goTo(idx: number, d: number) {
     cancelAnimationFrame(rafRef.current)
-    const next = curRef.current + delta
-    if (next >= TOTAL) { stopAudio(); onDone(); return }
-    if (next < 0) return
-    curRef.current = next
-    setCur(next)
-    setDir(delta)
-    setFrac(0)
-    fracRef.current = 0
-    runProg(INTRO_SLIDES[next].dur)
+    if(idx>=TOTAL){ stopAudio(); onDone(); return }
+    if(idx<0) return
+    curRef.current=idx
+    setCur(idx); setDir(d); setFrac(0)
+    fracRef.current=0
+    runProg(SLIDES[idx].dur)
   }
 
   function pauseProg() {
-    if (pausedRef.current) return
-    pausedRef.current = true; setPaused(true)
-    elapsedRef.current = performance.now() - startRef.current
+    if(pausedRef.current) return
+    pausedRef.current=true; setPaused(true)
+    elapsedRef.current=performance.now()-startRef.current
     cancelAnimationFrame(rafRef.current)
   }
 
   function resumeProg() {
-    if (!pausedRef.current) return
-    pausedRef.current = false; setPaused(false)
-    const dur = durRef.current
-    const elapsed = elapsedRef.current
-    const fStart = fracRef.current
-    const remaining = dur - elapsed
-    startRef.current = performance.now()
-
+    if(!pausedRef.current) return
+    pausedRef.current=false; setPaused(false)
+    const slideDur=durRef.current
+    const elapsed=elapsedRef.current
+    const fStart=fracRef.current
+    const remaining=slideDur-elapsed
+    startRef.current=performance.now()
     function tick(now: number) {
-      if (pausedRef.current) return
-      const dt = now - startRef.current
-      const f = fStart + Math.min(dt/remaining,1)*(1-fStart)
-      fracRef.current = f
-      setFrac(f)
-      if (f>=1) { advanceCur(1) }
-      else { rafRef.current = requestAnimationFrame(tick) }
+      if(pausedRef.current) return
+      const dt=now-startRef.current
+      const f=fStart+Math.min(dt/remaining,1)*(1-fStart)
+      fracRef.current=f; setFrac(f)
+      if(f>=1){ goTo(curRef.current+1,1) }
+      else{ rafRef.current=requestAnimationFrame(tick) }
     }
-    rafRef.current = requestAnimationFrame(tick)
+    rafRef.current=requestAnimationFrame(tick)
   }
 
-  // ── Lifecycle ──
-  useEffect(() => {
-    curRef.current = 0
-    runProg(INTRO_SLIDES[0].dur)
-    // visibility / page leave
-    const onHide = () => { if (document.hidden) stopAudio() }
-    const onLeave = () => stopAudio()
-    document.addEventListener('visibilitychange', onHide)
-    window.addEventListener('pagehide', onLeave)
-    window.addEventListener('beforeunload', onLeave)
-    return () => {
-      stopAudio()
-      cancelAnimationFrame(rafRef.current)
-      document.removeEventListener('visibilitychange', onHide)
-      window.removeEventListener('pagehide', onLeave)
-      window.removeEventListener('beforeunload', onLeave)
+  /* ── Lifecycle ── */
+  useEffect(()=>{
+    curRef.current=0
+    runProg(SLIDES[0].dur)
+    const onHide=()=>{ if(document.hidden) stopAudio() }
+    const onLeave=()=>stopAudio()
+    document.addEventListener('visibilitychange',onHide)
+    window.addEventListener('pagehide',onLeave)
+    window.addEventListener('beforeunload',onLeave)
+    return ()=>{
+      stopAudio(); cancelAnimationFrame(rafRef.current)
+      document.removeEventListener('visibilitychange',onHide)
+      window.removeEventListener('pagehide',onLeave)
+      window.removeEventListener('beforeunload',onLeave)
     }
-  }, [])
+  },[])
 
-  // ── Hold to pause ──
-  let holdTimer: ReturnType<typeof setTimeout>
-  function onPressStart() { holdTimer = setTimeout(pauseProg, 200) }
-  function onPressEnd()   { clearTimeout(holdTimer); if (pausedRef.current) resumeProg() }
+  /* ── Hold to pause ── */
+  const holdTimer = useRef<ReturnType<typeof setTimeout>>()
+  function onPressStart(){ holdTimer.current=setTimeout(pauseProg,200) }
+  function onPressEnd(){ clearTimeout(holdTimer.current); if(pausedRef.current) resumeProg() }
 
-  // ── Render ──
-  const slide = INTRO_SLIDES[cur]
-  const bars = Array.from({length:TOTAL},(_,i)=>({
-    done: i < cur, active: i===cur, frac: i===cur ? frac : 0
-  }))
+  function skip() { stopAudio(); localStorage.setItem('whispr_intro_seen','1'); onDone() }
+
+  const SlideComp = SLIDES[cur].Component
 
   return (
     <div
       onMouseDown={onPressStart} onMouseUp={onPressEnd}
       onTouchStart={onPressStart} onTouchEnd={onPressEnd}
-      style={{
-        position:'fixed',inset:0,zIndex:9999,background:'#111110',
+      style={{position:'fixed',inset:0,zIndex:9999,background:'#111110',
         fontFamily:"'IBM Plex Mono',monospace",overflow:'hidden',
-        userSelect:'none',WebkitTapHighlightColor:'transparent',
-      }}
+        userSelect:'none',WebkitTapHighlightColor:'transparent' as any}}
     >
-      {/* Grid */}
+      {/* Grid overlay */}
       <div style={{position:'absolute',inset:0,pointerEvents:'none',
         backgroundImage:'linear-gradient(rgba(245,242,235,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,242,235,0.025) 1px,transparent 1px)',
         backgroundSize:'28px 28px'}}/>
 
+      {/* Shared styles */}
+      <style>{`
+        .ir{background:#f5f2eb;color:#1a1a18;padding:20px 18px;position:relative;box-shadow:0 8px 40px rgba(0,0,0,0.65);}
+        .ir .dash{height:1px;margin:10px 0;background:repeating-linear-gradient(to right,#1a1a18 0,#1a1a18 5px,transparent 5px,transparent 10px);}
+        .ir .dk{background:#1a1a18;color:#f5f2eb;padding:14px 16px;margin:-20px -18px 14px;text-align:center;}
+        .ir .ib{background:#ede9df;border:1px solid #c5c5bf;padding:9px 11px;margin-top:10px;font-size:10px;color:#3d3d3a;line-height:1.85;}
+        .wchip{display:inline-flex;align-items:center;gap:3px;padding:4px 9px;font-size:11px;border:1px solid;font-family:'IBM Plex Mono',monospace;}
+        .wci{background:#1a1a18;color:#f5f2eb;border-color:#1a1a18;}
+        .wco{color:#6b6b67;border-color:#c5c5bf;}
+        .wldot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:wlp 2s ease infinite;vertical-align:middle;}
+        @keyframes wlp{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
+        .wpwdot{width:10px;height:10px;border-radius:50%;border:1.5px solid #9b9b96;display:inline-block;margin:0 3px;transition:all .15s;}
+        .wpwdot.on{background:#1a1a18;border-color:#1a1a18;}
+        .weopt{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;font-size:11px;border:1px solid #c5c5bf;margin-bottom:4px;color:#6b6b67;}
+        .weopt.act{border-color:#1a1a18;font-weight:700;color:#1a1a18;}
+        .wplrow{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;font-size:11px;border:1px solid #c5c5bf;margin-bottom:4px;transition:all .15s;}
+        .wplrow.sel{background:#1a1a18;color:#f5f2eb;border-color:#1a1a18;}
+        .wrbub{background:#ede9df;border:1px solid #c5c5bf;padding:8px 10px;margin-bottom:5px;font-size:11px;line-height:1.65;}
+        .wftag{font-size:9px;color:rgba(245,242,235,0.28);letter-spacing:0.22em;margin-bottom:14px;text-transform:uppercase;text-align:center;}
+        @keyframes wbl{0%,100%{opacity:1}50%{opacity:0}}
+        @keyframes wir{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+        @keyframes wil{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+      `}</style>
+
       {/* Progress bars */}
       <div style={{position:'absolute',top:0,left:0,right:0,zIndex:20,display:'flex',gap:'3px',padding:'10px 14px 0'}}>
-        {bars.map((b,i)=>(
+        {Array.from({length:TOTAL},(_,i)=>(
           <div key={i} style={{flex:1,height:'2px',background:'rgba(245,242,235,0.22)',borderRadius:'2px',overflow:'hidden'}}>
-            <div style={{height:'100%',background:'#f5f2eb',borderRadius:'2px',
-              width: b.done?'100%':b.active?`${b.frac*100}%`:'0%',
-              transition:'none'}}/>
+            <div style={{height:'100%',background:'#f5f2eb',borderRadius:'2px',width:i<cur?'100%':i===cur?`${frac*100}%`:'0%'}}/>
           </div>
         ))}
       </div>
@@ -1150,19 +1162,21 @@ function WhisprIntro({ onDone }: { onDone: () => void }) {
         <span style={{fontSize:'13px',fontWeight:700,letterSpacing:'0.2em',color:'#f5f2eb'}}>WHISPR</span>
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontSize:'10px',color:'rgba(245,242,235,0.35)',letterSpacing:'0.1em'}}>{cur+1} / {TOTAL}</span>
-          <button
-            onClick={(e)=>{e.stopPropagation(); onDone(); localStorage.setItem('whispr_intro_seen','1')}}
-            style={{background:'none',border:'1px solid rgba(245,242,235,0.18)',color:'rgba(245,242,235,0.5)',padding:'4px 10px',fontFamily:"'IBM Plex Mono',monospace",fontSize:'9px',cursor:'pointer',letterSpacing:'0.1em'}}
-          >SKIP ✕</button>
+          <button onClick={(e)=>{e.stopPropagation();skip()}}
+            style={{background:'none',border:'1px solid rgba(245,242,235,0.18)',color:'rgba(245,242,235,0.5)',padding:'4px 10px',fontFamily:"'IBM Plex Mono',monospace",fontSize:'9px',cursor:'pointer',letterSpacing:'0.1em'}}>
+            SKIP ✕
+          </button>
         </div>
       </div>
 
       {/* Tap zones */}
-      <div onClick={()=>advanceCur(-1)} style={{position:'absolute',top:0,bottom:0,left:0,width:'35%',zIndex:15,cursor:'pointer'}}/>
-      <div onClick={()=>advanceCur(1)}  style={{position:'absolute',top:0,bottom:0,right:0,width:'35%',zIndex:15,cursor:'pointer'}}/>
+      <div onClick={(e)=>{e.stopPropagation();goTo(cur-1,-1)}}
+        style={{position:'absolute',top:0,bottom:0,left:0,width:'35%',zIndex:15,cursor:'pointer'}}/>
+      <div onClick={(e)=>{e.stopPropagation();goTo(cur+1,1)}}
+        style={{position:'absolute',top:0,bottom:0,right:0,width:'35%',zIndex:15,cursor:'pointer'}}/>
 
-      {/* Pause indicator */}
-      {paused && (
+      {/* Pause badge */}
+      {paused&&(
         <div style={{position:'absolute',top:'50%',left:'50%',transform:'translate(-50%,-50%)',zIndex:30,
           background:'rgba(0,0,0,0.5)',padding:'8px 16px',fontSize:'12px',color:'rgba(245,242,235,0.6)',letterSpacing:'0.12em',pointerEvents:'none'}}>
           ❚❚ PAUSED
@@ -1171,76 +1185,58 @@ function WhisprIntro({ onDone }: { onDone: () => void }) {
 
       {/* Slide */}
       <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',padding:'64px 20px 96px',zIndex:10,overflowY:'auto'}}>
-        <div style={{width:'100%',maxWidth:'440px',animation: dir>=0?'introR 0.3s ease':'introL 0.3s ease'}} key={cur}>
-          <style>{`
-            @keyframes introR{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
-            @keyframes introL{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
-            .ir{background:#f5f2eb;color:#1a1a18;padding:20px 18px;position:relative;box-shadow:0 8px 40px rgba(0,0,0,0.65);}
-            .ir .dash{height:1px;margin:10px 0;background:repeating-linear-gradient(to right,#1a1a18 0,#1a1a18 5px,transparent 5px,transparent 10px);}
-            .ir .dk{background:#1a1a18;color:#f5f2eb;padding:14px 16px;margin:-20px -18px 14px;text-align:center;}
-            .ir .lbl{font-size:10px;color:#6b6b67;}
-            .ir .ib{background:#ede9df;border:1px solid #c5c5bf;padding:9px 11px;margin-top:10px;font-size:10px;color:#3d3d3a;line-height:1.85;}
-            .chip{display:inline-flex;align-items:center;gap:3px;padding:4px 9px;font-size:11px;border:1px solid;font-family:'IBM Plex Mono',monospace;}
-            .ci{background:#1a1a18;color:#f5f2eb;border-color:#1a1a18;}
-            .co{color:#6b6b67;border-color:#c5c5bf;}
-            .ldot{width:7px;height:7px;border-radius:50%;background:#22c55e;display:inline-block;animation:lp 2s ease infinite;vertical-align:middle;}
-            @keyframes lp{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,0.5)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
-            .pwdot{width:10px;height:10px;border-radius:50%;border:1.5px solid #9b9b96;display:inline-block;margin:0 3px;transition:all .15s;}
-            .pwdot.on{background:#1a1a18;border-color:#1a1a18;}
-            .eopt{display:flex;justify-content:space-between;align-items:center;padding:7px 9px;font-size:11px;border:1px solid #c5c5bf;margin-bottom:4px;color:#6b6b67;}
-            .eopt.act{border-color:#1a1a18;font-weight:700;color:#1a1a18;}
-            .plrow{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;font-size:11px;border:1px solid #c5c5bf;margin-bottom:4px;transition:all .15s;}
-            .plrow.sel{background:#1a1a18;color:#f5f2eb;border-color:#1a1a18;}
-            .rbub{background:#ede9df;border:1px solid #c5c5bf;padding:8px 10px;margin-bottom:5px;font-size:11px;line-height:1.65;}
-            .ftag{font-size:9px;color:rgba(245,242,235,0.28);letter-spacing:0.22em;margin-bottom:14px;text-transform:uppercase;text-align:center;}
-          `}</style>
-          {slide.render()}
+        <div key={cur} style={{width:'100%',maxWidth:'440px',animation:dir>=0?'wir 0.3s ease':'wil 0.3s ease'}}>
+          <SlideComp />
         </div>
       </div>
 
-      {/* Bottom CTA */}
-      <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:20,padding:'14px 18px 26px',display:'flex',gap:'8px',background:'linear-gradient(transparent,rgba(17,17,16,0.95) 40%)'}}>
-        <button onClick={(e)=>{e.stopPropagation();onDone();localStorage.setItem('whispr_intro_seen','1')}}
-          style={{flex:1,padding:'12px',background:'#f5f2eb',color:'#111110',border:'none',fontFamily:"'IBM Plex Mono',monospace",fontSize:'12px',fontWeight:700,letterSpacing:'0.1em',cursor:'pointer'}}>
+      {/* Enter board CTA */}
+      <div style={{position:'absolute',bottom:0,left:0,right:0,zIndex:20,padding:'14px 18px 26px',display:'flex',gap:'8px',
+        background:'linear-gradient(transparent,rgba(17,17,16,0.95) 40%)'}}>
+        <button onClick={(e)=>{e.stopPropagation();skip()}}
+          style={{flex:1,padding:'12px',background:'#f5f2eb',color:'#111110',border:'none',
+            fontFamily:"'IBM Plex Mono',monospace",fontSize:'12px',fontWeight:700,letterSpacing:'0.1em',cursor:'pointer'}}>
           ENTER BOARD →
         </button>
       </div>
 
-      {/* Beat trigger */}
-      <div onClickCapture={()=>startBeat()} onTouchStartCapture={()=>startBeat()} style={{position:'absolute',inset:0,zIndex:1,pointerEvents:'none'}}/>
+      {/* Beat starter — fires on any first interaction */}
+      <div onClick={startBeat} onTouchStart={startBeat}
+        style={{position:'absolute',inset:0,zIndex:0,pointerEvents:'none'}}/>
     </div>
   )
 }
 
-/* ════════════════════════════════════════════════════════════
-   SLIDE DEFINITIONS — pure JSX, no external dependencies
-   ════════════════════════════════════════════════════════════ */
-const INTRO_SLIDES: { dur: number; render: () => React.ReactNode }[] = [
-  // 0 — HERO
-  { dur:6500, render:()=>(
+/* ══════════════════════════════════════════════════════════════
+   SLIDE COMPONENTS — each is a proper React component with its
+   own hooks. No illegal hook calls inside render functions.
+   ══════════════════════════════════════════════════════════════ */
+
+function S0Hero() {
+  return (
     <div style={{textAlign:'center',color:'#f5f2eb'}}>
       <div style={{fontSize:'10px',color:'rgba(245,242,235,0.2)',letterSpacing:'0.22em',marginBottom:10}}>ANONYMOUS CONFESSIONS CO.</div>
       <div style={{fontSize:'clamp(52px,14vw,88px)',fontWeight:700,letterSpacing:'0.14em',lineHeight:1}}>WHISPR</div>
       <div style={{fontSize:'10px',color:'rgba(245,242,235,0.3)',letterSpacing:'0.15em',marginTop:8}}>EST. 2025 · whispr.name.ng</div>
-      <div style={{marginTop:28,maxWidth:360,textAlign:'left',margin:'28px auto 0'}}>
+      <div style={{marginTop:28,maxWidth:360,margin:'28px auto 0'}}>
         <div style={{fontSize:'13px',color:'rgba(245,242,235,0.6)',lineHeight:1.9,marginBottom:12}}>Your group has things they would never say out loud. Confessions. Opinions. Secrets. Tea.</div>
         <div style={{fontSize:'12px',color:'rgba(245,242,235,0.35)',lineHeight:1.9}}>Whispr is a private anonymous confession board. No accounts. No names. No traces. Just your group being honest for once.</div>
       </div>
       <div style={{marginTop:28,fontSize:'9px',color:'rgba(245,242,235,0.18)',letterSpacing:'0.18em'}}>TAP RIGHT TO CONTINUE →</div>
     </div>
-  )},
+  )
+}
 
-  // 1 — HOW IT WORKS
-  { dur:8000, render:()=>(
+function S1HowItWorks() {
+  return (
     <>
-      <div className="ftag">HOW IT WORKS</div>
+      <div className="wftag">HOW IT WORKS</div>
       <div className="ir">
         <div style={{textAlign:'center',marginBottom:12}}><div style={{fontSize:16,fontWeight:700,letterSpacing:'0.1em'}}>3 STEPS</div><div style={{fontSize:10,color:'#6b6b67',marginTop:2}}>THAT IS ALL IT TAKES</div></div>
         <div className="dash"/>
-        {[['01','CREATE A BOARD','Name your board. Choose expiry. Add optional password. Get an 8-character invite code instantly. No signup.'],
-          ['02','SHARE THE CODE','Send it over WhatsApp, DM, anywhere. Anyone with the code joins as an anonymous ghost.'],
-          ['03','CONFESS FREELY','Everyone posts 100% anonymously. React, reply, attach media. Updates live for everyone.']
-        ].map(([n,t,d])=>(
+        {([['01','CREATE A BOARD','Name your board. Choose expiry. Add optional password. Get an 8-character invite code instantly. No signup.'],
+           ['02','SHARE THE CODE','Send it over WhatsApp, DM, anywhere. Anyone with the code joins as an anonymous ghost.'],
+           ['03','CONFESS FREELY','Everyone posts 100% anonymously. React, reply, attach media. Updates live for everyone.']] as const).map(([n,t,d])=>(
           <div key={n} style={{display:'flex',gap:12,alignItems:'flex-start',margin:'12px 0'}}>
             <div style={{fontSize:22,fontWeight:700,color:'#c5c5bf',minWidth:26,lineHeight:1}}>{n}</div>
             <div><div style={{fontSize:12,fontWeight:700,marginBottom:3}}>{t}</div><div style={{fontSize:10,color:'#6b6b67',lineHeight:1.85}}>{d}</div></div>
@@ -1250,259 +1246,307 @@ const INTRO_SLIDES: { dur: number; render: () => React.ReactNode }[] = [
         <div style={{textAlign:'center',fontSize:10,color:'#6b6b67',lineHeight:1.85}}>NO SIGN UP · NO APP · NO EMAIL · FREE FOREVER</div>
       </div>
     </>
-  )},
+  )
+}
 
-  // 2 — ANONYMOUS POSTING
-  { dur:8500, render:()=>{
-    const [typed, setTyped] = useState('')
-    const text = 'I told my lecturer I had malaria. I was watching Netflix the whole time.'
-    useEffect(()=>{
-      let i=0; const iv=setInterval(()=>{ setTyped(text.slice(0,i)); i++; if(i>text.length) clearInterval(iv) },52)
-      return ()=>clearInterval(iv)
-    },[])
-    return (
-      <>
-        <div className="ftag">FEATURE 01 — ANONYMOUS POSTING</div>
-        <div className="ir">
-          <div style={{textAlign:'center',marginBottom:10}}>
-            <div style={{fontSize:10,color:'#6b6b67',letterSpacing:'0.08em'}}>WHISPR · CONFESSION RECEIPT</div>
-            <div style={{fontSize:10,color:'#9b9b96'}}>TXN#7291-A4F2 · BOARD: SS3-CLASS</div>
-          </div>
-          <div className="dash"/>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#6b6b67',margin:'6px 0'}}>
-            <span>ANON: <strong style={{color:'#1a1a18'}}>G247</strong></span><span>MOOD: 😏 PETTY</span><span>JUST NOW</span>
-          </div>
-          <div className="dash"/>
-          <div style={{fontSize:13,lineHeight:1.85,minHeight:52,margin:'10px 0',fontStyle:'italic',color:'#1a1a18'}}>
-            {typed}<span style={{display:'inline-block',width:1,height:'1em',background:'#1a1a18',verticalAlign:'middle',animation:'bl 0.7s step-end infinite',marginLeft:1}}/>
-            <style>{`@keyframes bl{0%,100%{opacity:1}50%{opacity:0}}`}</style>
-          </div>
-          <div className="dash"/>
-          <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:6}}>
-            <span className="chip ci">❤️ 4</span><span className="chip co">💀 12</span><span className="chip co">😭 3</span>
-            <span className="chip co" style={{marginLeft:'auto'}}>💬 5 REPLIES</span>
-          </div>
-          <div className="ib"><div style={{fontSize:9,color:'#9b9b96',letterSpacing:'0.08em',marginBottom:4}}>WHY IT IS COMPLETELY SAFE</div>
-            No login required · Random alias per session · IP never logged · No device fingerprint · Zero identity data stored anywhere</div>
+function S2AnonPosting() {
+  const [typed, setTyped] = useState('')
+  const text = 'I told my lecturer I had malaria. I was watching Netflix the whole time.'
+  useEffect(()=>{
+    let i=0
+    const iv=setInterval(()=>{ setTyped(text.slice(0,i)); i++; if(i>text.length) clearInterval(iv) },52)
+    return ()=>clearInterval(iv)
+  },[])
+  return (
+    <>
+      <div className="wftag">FEATURE 01 — ANONYMOUS POSTING</div>
+      <div className="ir">
+        <div style={{textAlign:'center',marginBottom:10}}>
+          <div style={{fontSize:10,color:'#6b6b67',letterSpacing:'0.08em'}}>WHISPR · CONFESSION RECEIPT</div>
+          <div style={{fontSize:10,color:'#9b9b96'}}>TXN#7291-A4F2 · BOARD: SS3-CLASS</div>
         </div>
-      </>
-    )
-  }},
+        <div className="dash"/>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#6b6b67',margin:'6px 0'}}>
+          <span>ANON: <strong style={{color:'#1a1a18'}}>G247</strong></span><span>MOOD: 😏 PETTY</span><span>JUST NOW</span>
+        </div>
+        <div className="dash"/>
+        <div style={{fontSize:13,lineHeight:1.85,minHeight:52,margin:'10px 0',fontStyle:'italic',color:'#1a1a18'}}>
+          {typed}<span style={{display:'inline-block',width:1,height:'1em',background:'#1a1a18',verticalAlign:'middle',animation:'wbl 0.7s step-end infinite',marginLeft:1}}/>
+        </div>
+        <div className="dash"/>
+        <div style={{display:'flex',gap:4,flexWrap:'wrap',marginTop:6}}>
+          <span className="wchip wci">❤️ 4</span><span className="wchip wco">💀 12</span><span className="wchip wco">😭 3</span>
+          <span className="wchip wco" style={{marginLeft:'auto'}}>💬 5 REPLIES</span>
+        </div>
+        <div className="ib">
+          <div style={{fontSize:9,color:'#9b9b96',letterSpacing:'0.08em',marginBottom:4}}>WHY IT IS COMPLETELY SAFE</div>
+          No login required · Random alias per session · IP never logged · No device fingerprint · Zero identity data stored anywhere
+        </div>
+      </div>
+    </>
+  )
+}
 
-  // 3 — REAL-TIME FEED
-  { dur:8000, render:()=>{
-    const [cnt,setCnt] = useState(41)
-    const [posts,setPosts] = useState<string[]>([])
-    const ALL = ['"I googled answers during the exam while pretending to think."','"On my way" was sent from my bed.','"I have attended 2 lectures this semester. Both times the wrong room."','"I pretend to be busy so nobody asks me for anything."']
-    useEffect(()=>{
-      let pi=0,c=41
-      const iv=setInterval(()=>{
-        c++; setCnt(c)
-        if(pi<ALL.length){ setPosts(p=>[ALL[pi],...p]); pi++ }
-      },1400)
-      return ()=>clearInterval(iv)
-    },[])
-    return (
-      <>
-        <div className="ftag">FEATURE 02 — REAL-TIME FEED</div>
-        <div className="ir">
-          <div className="dk">
-            <div style={{fontSize:10,color:'rgba(245,242,235,0.4)',letterSpacing:'0.1em',marginBottom:5}}>RECEIPTS ISSUED — BOARD: SS3</div>
-            <div style={{fontSize:52,fontWeight:700,letterSpacing:'0.12em',fontVariantNumeric:'tabular-nums',color: cnt>41?'#4ade80':'inherit',transition:'color 0.3s'}}>{String(cnt).padStart(4,'0')}</div>
-            <div style={{fontSize:9,color:'rgba(245,242,235,0.25)',marginTop:3,letterSpacing:'0.08em'}}>UPDATES INSTANTLY · NO REFRESH NEEDED</div>
-          </div>
-          <div style={{fontSize:10,color:'#6b6b67',paddingBottom:8,borderBottom:'1px dashed #c5c5bf',lineHeight:1.75}}>Powered by Supabase Realtime Websockets. The moment anyone posts, every screen on the board updates — zero delay, no polling.</div>
-          <div style={{display:'flex',flexDirection:'column',gap:4,marginTop:8,maxHeight:120,overflow:'hidden'}}>
-            {posts.map((p,i)=><div key={i} style={{fontSize:10,lineHeight:1.65,padding:'5px 0',borderBottom:'1px dashed #c5c5bf',color:'#3d3d3a',fontStyle:'italic'}}>{p}</div>)}
+function S3RealtimeFeed() {
+  const ALL = [
+    '"I googled answers during the exam while pretending to think deeply."',
+    '"On my way" was sent from my bed.',
+    '"I have attended 2 lectures this semester. Both times the wrong room."',
+    '"I pretend to be busy so nobody asks me for anything."',
+  ]
+  const [cnt, setCnt]   = useState(41)
+  const [posts, setPosts] = useState<string[]>([])
+  const piRef = useRef(0)
+  const cRef  = useRef(41)
+  useEffect(()=>{
+    const iv=setInterval(()=>{
+      cRef.current++; setCnt(cRef.current)
+      if(piRef.current<ALL.length){ setPosts(p=>[ALL[piRef.current],...p]); piRef.current++ }
+    },1400)
+    return ()=>clearInterval(iv)
+  },[])
+  return (
+    <>
+      <div className="wftag">FEATURE 02 — REAL-TIME FEED</div>
+      <div className="ir">
+        <div className="dk">
+          <div style={{fontSize:10,color:'rgba(245,242,235,0.4)',letterSpacing:'0.1em',marginBottom:5}}>RECEIPTS ISSUED — BOARD: SS3</div>
+          <div style={{fontSize:52,fontWeight:700,letterSpacing:'0.12em',fontVariantNumeric:'tabular-nums',color:cnt>41?'#4ade80':'#f5f2eb',transition:'color 0.3s'}}>{String(cnt).padStart(4,'0')}</div>
+          <div style={{fontSize:9,color:'rgba(245,242,235,0.25)',marginTop:3,letterSpacing:'0.08em'}}>UPDATES INSTANTLY · NO REFRESH NEEDED</div>
+        </div>
+        <div style={{fontSize:10,color:'#6b6b67',paddingBottom:8,borderBottom:'1px dashed #c5c5bf',lineHeight:1.75}}>Powered by Supabase Realtime Websockets. The moment anyone posts, every screen on the board updates — zero delay, no polling.</div>
+        <div style={{display:'flex',flexDirection:'column',gap:4,marginTop:8,maxHeight:120,overflow:'hidden'}}>
+          {posts.map((p,i)=><div key={i} style={{fontSize:10,lineHeight:1.65,padding:'5px 0',borderBottom:'1px dashed #c5c5bf',color:'#3d3d3a',fontStyle:'italic'}}>{p}</div>)}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function S4LivePresence() {
+  const NAMES  = ['G247','S019','E441','C112','M091']
+  const COLORS = ['#f59e0b','#8b5cf6','#ef4444','#3b82f6','#22c55e']
+  const [online, setOnline] = useState(['G247'])
+  const niRef = useRef(1)
+  useEffect(()=>{
+    const iv=setInterval(()=>{
+      setOnline(o=>{
+        if(o.length<5 && niRef.current<NAMES.length) return [...o,NAMES[niRef.current++]]
+        if(o.length>2) return o.slice(1)
+        return o
+      })
+    },950)
+    return ()=>clearInterval(iv)
+  },[])
+  return (
+    <>
+      <div className="wftag">FEATURE 03 — LIVE PRESENCE</div>
+      <div className="ir">
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
+          <div><div style={{fontSize:13,fontWeight:700,marginBottom:2}}>WHO IS IN THE ROOM?</div><div style={{fontSize:10,color:'#6b6b67'}}>LIVE · UPDATES EVERY SECOND</div></div>
+          <div style={{textAlign:'right'}}>
+            <span className="wldot"/>&nbsp;<span style={{fontSize:20,fontWeight:700}}>{online.length}</span>
+            <div style={{fontSize:9,color:'#6b6b67'}}>{online.length===1?'PERSON':'PEOPLE'} ONLINE</div>
           </div>
         </div>
-      </>
-    )
-  }},
-
-  // 4 — LIVE PRESENCE
-  { dur:7500, render:()=>{
-    const NAMES=['G247','S019','E441','C112','M091']
-    const COLORS=['#f59e0b','#8b5cf6','#ef4444','#3b82f6','#22c55e']
-    const [online,setOnline] = useState(['G247'])
-    useEffect(()=>{
-      let ni=1
-      const iv=setInterval(()=>{
-        setOnline(o=> o.length<5&&ni<NAMES.length ? [...o,NAMES[ni++]] : o.length>2 ? o.slice(1) : o)
-      },950)
-      return ()=>clearInterval(iv)
-    },[])
-    return (
-      <>
-        <div className="ftag">FEATURE 03 — LIVE PRESENCE</div>
-        <div className="ir">
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-            <div><div style={{fontSize:13,fontWeight:700,marginBottom:2}}>WHO IS IN THE ROOM?</div><div style={{fontSize:10,color:'#6b6b67'}}>LIVE · UPDATES EVERY SECOND</div></div>
-            <div style={{textAlign:'right'}}><span className="ldot"/>&nbsp;<span style={{fontSize:20,fontWeight:700}}>{online.length}</span><div style={{fontSize:9,color:'#6b6b67'}}>{online.length===1?'PERSON':'PEOPLE'} ONLINE</div></div>
-          </div>
-          <div className="dash"/>
-          <div style={{display:'flex',flexDirection:'column',gap:4,margin:'8px 0'}}>
-            {online.map((n,i)=>(
-              <div key={n} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 8px',background:'#ede9df',border:'1px solid #c5c5bf',fontSize:10}}>
-                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                  <div style={{width:22,height:22,borderRadius:'50%',background:COLORS[i%5]+'22',border:`1.5px solid ${COLORS[i%5]}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:COLORS[i%5]}}>{n[0]}</div>
-                  <span style={{color:'#6b6b67'}}>ANON: {n}</span>
-                </div>
-                <span style={{color:'#22c55e',fontSize:9}}>● LIVE</span>
+        <div className="dash"/>
+        <div style={{display:'flex',flexDirection:'column',gap:4,margin:'8px 0'}}>
+          {online.map((n,i)=>(
+            <div key={n} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 8px',background:'#ede9df',border:'1px solid #c5c5bf',fontSize:10}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:22,height:22,borderRadius:'50%',background:COLORS[i%5]+'22',border:`1.5px solid ${COLORS[i%5]}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,fontWeight:700,color:COLORS[i%5]}}>{n[0]}</div>
+                <span style={{color:'#6b6b67'}}>ANON: {n}</span>
               </div>
-            ))}
-          </div>
-          <div className="dash"/>
-          <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9,textAlign:'center'}}>Only a live count is shown — no identities revealed. Tracked via Supabase Realtime Presence channels.</div>
-        </div>
-      </>
-    )
-  }},
-
-  // 5 — REACTIONS
-  { dur:7500, render:()=>{
-    const rxns:[string,number,boolean][] = [['❤️',19,true],['💀',34,true],['😭',8,false],['😂',5,false],['🔥',12,false],['👀',11,false],['🤯',4,false],['🫂',6,false],['😱',3,false],['🫡',1,false]]
-    const [counts,setCounts] = useState(rxns.map(()=>0))
-    useEffect(()=>{
-      const ivs = rxns.map((r,i)=>setTimeout(()=>{
-        let n=0; const max=r[1]
-        const iv=setInterval(()=>{ n=Math.min(n+Math.ceil(max/6),max); setCounts(c=>{const x=[...c];x[i]=n;return x}); if(n>=max) clearInterval(iv) },55)
-      },i*105+150))
-      return ()=>ivs.forEach(clearTimeout)
-    },[])
-    return (
-      <>
-        <div className="ftag">FEATURE 04 — REACTIONS</div>
-        <div className="ir">
-          <div style={{fontSize:13,lineHeight:1.85,fontStyle:'italic',color:'#3d3d3a',paddingBottom:10,borderBottom:'1px dashed #c5c5bf',marginBottom:10}}>"My entire friend group knew I liked them for 6 months and nobody told me 💀"</div>
-          <div style={{fontSize:10,color:'#6b6b67',marginBottom:8}}>10 REACTION TYPES · ANONYMOUS · ONE PER PERSON</div>
-          <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:10}}>
-            {rxns.map((r,i)=><span key={i} className={`chip ${r[2]?'ci':'co'}`}>{r[0]} {counts[i]}</span>)}
-          </div>
-          <div className="dash"/>
-          <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9}}>Top 3 shown on card by default. Tap to expand all 10. Counts update live. Tap again to unreact. Nobody knows who reacted.</div>
-        </div>
-      </>
-    )
-  }},
-
-  // 6 — REPLY THREADS
-  { dur:8500, render:()=>{
-    const reps=[{who:'ANON: S019 · 5M AGO',t:"you're not alone in this fr, same thing happened to me"},{who:'ANON: E441 · 3M AGO',t:"been wearing the mask so long it's stuck to my face"},{who:'ANON: C112 · 1M AGO',t:'this hit different. thank you for posting this honestly'}]
-    const [shown,setShown] = useState(0)
-    useEffect(()=>{
-      const ivs=reps.map((_,i)=>setTimeout(()=>setShown(n=>n+1),i*750+300))
-      return ()=>ivs.forEach(clearTimeout)
-    },[])
-    return (
-      <>
-        <div className="ftag">FEATURE 05 — REPLY THREADS</div>
-        <div className="ir">
-          <div style={{fontSize:13,lineHeight:1.85,fontStyle:'italic',color:'#1a1a18',paddingBottom:10,borderBottom:'1px dashed #c5c5bf',marginBottom:8}}>"I have been faking being okay for so long I forgot what actually okay feels like"</div>
-          <div style={{fontSize:10,color:'#6b6b67',marginBottom:8}}>💬 3 REPLIES · EACH REPLY ALSO FULLY ANONYMOUS</div>
-          {reps.slice(0,shown).map((r,i)=>(
-            <div key={i} className="rbub"><div style={{fontSize:9,color:'#9b9b96',marginBottom:3}}>{r.who}</div>{r.t}</div>
+              <span style={{color:'#22c55e',fontSize:9}}>● LIVE</span>
+            </div>
           ))}
-          <div className="dash" style={{marginTop:8}}/>
-          <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9}}>Reply count shown on card before opening. Threads are anonymous and update live for everyone on the board.</div>
         </div>
-      </>
-    )
-  }},
+        <div className="dash"/>
+        <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9,textAlign:'center'}}>Only a live count is shown — no identities revealed. Tracked via Supabase Realtime Presence channels.</div>
+      </div>
+    </>
+  )
+}
 
-  // 7 — BOARD EXPIRY
-  { dur:8000, render:()=>{
-    const [secs,setSecs] = useState(86387)
-    useEffect(()=>{ const iv=setInterval(()=>setSecs(s=>s-1),80); return ()=>clearInterval(iv) },[])
-    const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=secs%60
-    const fmt=(n:number)=>String(n).padStart(2,'0')
-    return (
-      <>
-        <div className="ftag">FEATURE 07 — BOARD EXPIRY</div>
-        <div className="ir">
-          <div className="dk">
-            <div style={{fontSize:10,color:'rgba(245,242,235,0.4)',letterSpacing:'0.1em',marginBottom:5}}>THIS BOARD SELF-DESTRUCTS IN</div>
-            <div style={{fontSize:38,fontWeight:700,letterSpacing:'0.12em',color:'#f59e0b',fontVariantNumeric:'tabular-nums'}}>{fmt(h)}:{fmt(m)}:{fmt(s)}</div>
-            <div style={{fontSize:9,color:'rgba(245,242,235,0.25)',marginTop:4,letterSpacing:'0.06em'}}>CONFESSIONS · REPLIES · REACTIONS · MEDIA — ALL WIPED</div>
-          </div>
-          {[['∞ NEVER EXPIRES','BOARD STAYS FOREVER',false],['⏱ 24 HOURS ✓','AUTO-DELETES AFTER 1 DAY',true],['⏱ 7 DAYS','AUTO-DELETES AFTER 1 WEEK',false],['⏱ 30 DAYS','AUTO-DELETES AFTER 1 MONTH',false]].map(([l,d,a])=>(
-            <div key={String(l)} className={`eopt${a?' act':''}`}>{l}<span style={{fontSize:10}}>{d}</span></div>
+function S5Reactions() {
+  const rxns: [string,number,boolean][] = [['❤️',19,true],['💀',34,true],['😭',8,false],['😂',5,false],['🔥',12,false],['👀',11,false],['🤯',4,false],['🫂',6,false],['😱',3,false],['🫡',1,false]]
+  const [counts, setCounts] = useState(rxns.map(()=>0))
+  useEffect(()=>{
+    const timers = rxns.map((r,i)=>setTimeout(()=>{
+      let n=0; const max=r[1]
+      const iv=setInterval(()=>{
+        n=Math.min(n+Math.ceil(max/6),max)
+        setCounts(c=>{ const x=[...c]; x[i]=n; return x })
+        if(n>=max) clearInterval(iv)
+      },55)
+    },i*105+150))
+    return ()=>timers.forEach(clearTimeout)
+  },[])
+  return (
+    <>
+      <div className="wftag">FEATURE 04 — REACTIONS</div>
+      <div className="ir">
+        <div style={{fontSize:13,lineHeight:1.85,fontStyle:'italic',color:'#3d3d3a',paddingBottom:10,borderBottom:'1px dashed #c5c5bf',marginBottom:10}}>"My entire friend group knew I liked them for 6 months and nobody told me 💀"</div>
+        <div style={{fontSize:10,color:'#6b6b67',marginBottom:8}}>10 REACTION TYPES · ANONYMOUS · ONE PER PERSON</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:10}}>
+          {rxns.map((r,i)=><span key={i} className={`wchip ${r[2]?'wci':'wco'}`}>{r[0]} {counts[i]}</span>)}
+        </div>
+        <div className="dash"/>
+        <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9}}>Top 3 shown on card by default. Tap to expand all 10. Counts update live. Tap again to unreact. Nobody knows who reacted.</div>
+      </div>
+    </>
+  )
+}
+
+function S6Replies() {
+  const reps = [
+    {who:'ANON: S019 · 5M AGO', t:"you're not alone in this fr, same thing happened to me"},
+    {who:'ANON: E441 · 3M AGO', t:"been wearing the mask so long it's stuck to my face"},
+    {who:'ANON: C112 · 1M AGO', t:'this hit different. thank you for posting this honestly'},
+  ]
+  const [shown, setShown] = useState(0)
+  useEffect(()=>{
+    const timers=reps.map((_,i)=>setTimeout(()=>setShown(n=>n+1),i*750+300))
+    return ()=>timers.forEach(clearTimeout)
+  },[])
+  return (
+    <>
+      <div className="wftag">FEATURE 05 — REPLY THREADS</div>
+      <div className="ir">
+        <div style={{fontSize:13,lineHeight:1.85,fontStyle:'italic',color:'#1a1a18',paddingBottom:10,borderBottom:'1px dashed #c5c5bf',marginBottom:8}}>"I have been faking being okay for so long I forgot what actually okay feels like"</div>
+        <div style={{fontSize:10,color:'#6b6b67',marginBottom:8}}>💬 3 REPLIES · EACH REPLY ALSO FULLY ANONYMOUS</div>
+        {reps.slice(0,shown).map((r,i)=>(
+          <div key={i} className="wrbub"><div style={{fontSize:9,color:'#9b9b96',marginBottom:3}}>{r.who}</div>{r.t}</div>
+        ))}
+        <div className="dash" style={{marginTop:8}}/>
+        <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9}}>Reply count shown on card before opening. Threads are anonymous and update live for everyone on the board.</div>
+      </div>
+    </>
+  )
+}
+
+function S7Expiry() {
+  const [secs, setSecs] = useState(86387)
+  useEffect(()=>{ const iv=setInterval(()=>setSecs(s=>s-1),80); return ()=>clearInterval(iv) },[])
+  const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60), s=secs%60
+  const f=(n:number)=>String(n).padStart(2,'0')
+  return (
+    <>
+      <div className="wftag">FEATURE 07 — BOARD EXPIRY</div>
+      <div className="ir">
+        <div className="dk">
+          <div style={{fontSize:10,color:'rgba(245,242,235,0.4)',letterSpacing:'0.1em',marginBottom:5}}>THIS BOARD SELF-DESTRUCTS IN</div>
+          <div style={{fontSize:38,fontWeight:700,letterSpacing:'0.12em',color:'#f59e0b',fontVariantNumeric:'tabular-nums'}}>{f(h)}:{f(m)}:{f(s)}</div>
+          <div style={{fontSize:9,color:'rgba(245,242,235,0.25)',marginTop:4,letterSpacing:'0.06em'}}>CONFESSIONS · REPLIES · REACTIONS · MEDIA — ALL WIPED</div>
+        </div>
+        {([['∞ NEVER EXPIRES','BOARD STAYS FOREVER',false],['⏱ 24 HOURS ✓','AUTO-DELETES AFTER 1 DAY',true],['⏱ 7 DAYS','AUTO-DELETES AFTER 1 WEEK',false],['⏱ 30 DAYS','AUTO-DELETES AFTER 1 MONTH',false]] as const).map(([l,d,a])=>(
+          <div key={l} className={`weopt${a?' act':''}`}>{l}<span style={{fontSize:10}}>{d}</span></div>
+        ))}
+        <div className="dash"/>
+        <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9,textAlign:'center'}}>Set at creation — cannot be changed. A cron job runs every 10 minutes and fully wipes expired boards. Zero trace left.</div>
+      </div>
+    </>
+  )
+}
+
+function S8Password() {
+  const [filled, setFilled]  = useState(0)
+  const [granted, setGranted] = useState(false)
+  useEffect(()=>{
+    function run() {
+      let i=0
+      const iv=setInterval(()=>{
+        if(i<8){ setFilled(i+1); i++ }
+        else{
+          clearInterval(iv); setGranted(true)
+          setTimeout(()=>{ setFilled(0); setGranted(false); setTimeout(run,400) },2200)
+        }
+      },160)
+    }
+    const t=setTimeout(run,600)
+    return ()=>clearTimeout(t)
+  },[])
+  return (
+    <>
+      <div className="wftag">FEATURE 08 — PASSWORD PROTECTION</div>
+      <div className="ir">
+        <div style={{textAlign:'center',marginBottom:12}}>
+          <div style={{fontSize:24,marginBottom:4}}>🔒</div>
+          <div style={{fontSize:14,fontWeight:700,letterSpacing:'0.1em'}}>ACCESS RESTRICTED</div>
+          <div style={{fontSize:10,color:'#6b6b67',marginTop:2}}>BOARD: SS3-CLASS · PASSWORD REQUIRED</div>
+        </div>
+        <div className="dash"/>
+        <div style={{fontSize:10,color:'#6b6b67',margin:'8px 0 6px',letterSpacing:'0.06em'}}>ENTER PASSWORD</div>
+        <div style={{display:'flex',gap:5,justifyContent:'center',margin:'10px 0'}}>
+          {Array.from({length:8},(_,i)=><span key={i} className={`wpwdot${i<filled?' on':''}`}/>)}
+        </div>
+        <div style={{height:14,fontSize:10,color:'#9b9b96',textAlign:'center',marginBottom:4}}>{granted?'✓ PASSWORD VERIFIED':''}</div>
+        <div className="dash" style={{margin:'8px 0'}}/>
+        <div style={{padding:10,background:granted?'#16a34a':'#1a1a18',color:'#f5f2eb',textAlign:'center',fontSize:12,fontWeight:700,letterSpacing:'0.1em',transition:'background .3s'}}>
+          {granted?'ACCESS GRANTED ✓':'ENTER BOARD →'}
+        </div>
+        <div className="dash" style={{margin:'10px 0'}}/>
+        <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9}}>Password hashed with SHA-256, never stored as plaintext. Optional — boards can be open or locked. Wrong password = denied.</div>
+      </div>
+    </>
+  )
+}
+
+function S9Recap() {
+  const items = [
+    ['01','ANONYMOUS POSTING','No accounts, random aliases, zero identity data'],
+    ['02','REAL-TIME FEED','Posts appear instantly via Supabase websockets'],
+    ['03','LIVE PRESENCE','See how many are on the board right now'],
+    ['04','10 REACTIONS','Anonymous, counts update live for everyone'],
+    ['05','REPLY THREADS','Nested, anonymous, real-time'],
+    ['06','IMAGE & VIDEO','50MB max, greyscale, plays inline'],
+    ['07','BOARD EXPIRY','24h · 7d · 30d · ∞ — auto-wipes at zero'],
+    ['08','PASSWORD LOCK','SHA-256, optional, per-device memory'],
+    ['09','SOCIAL SHARE','5 platforms, receipt PNG, one tap'],
+    ['10','DARK MODE','Toggle, localStorage, instant'],
+    ['11','MOBILE READY','Bottom sheet, FAB, touch optimized'],
+  ]
+  const [shown, setShown] = useState(0)
+  useEffect(()=>{
+    const timers=items.map((_,i)=>setTimeout(()=>setShown(n=>n+1),i*180+200))
+    return ()=>timers.forEach(clearTimeout)
+  },[])
+  return (
+    <>
+      <div className="wftag">ALL FEATURES — COMPLETE RECEIPT</div>
+      <div className="ir">
+        <div style={{textAlign:'center',marginBottom:10}}>
+          <div style={{fontSize:20,fontWeight:700,letterSpacing:'0.15em'}}>WHISPR</div>
+          <div style={{fontSize:10,color:'#6b6b67',letterSpacing:'0.1em',marginTop:2}}>EVERYTHING INCLUDED · $0.00</div>
+        </div>
+        <div className="dash"/>
+        <div style={{margin:'8px 0'}}>
+          {items.slice(0,shown).map(([n,t,d])=>(
+            <div key={n} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'5px 0',borderBottom:'1px dashed #c5c5bf',fontSize:11}}>
+              <div><span style={{color:'#9b9b96',fontSize:9,marginRight:6}}>{n}</span>{t}<div style={{fontSize:9,color:'#9b9b96',marginTop:1}}>{d}</div></div>
+              <span style={{color:'#22c55e',fontWeight:700,marginLeft:8}}>✓</span>
+            </div>
           ))}
-          <div className="dash"/>
-          <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9,textAlign:'center'}}>Set at creation — cannot be changed. A cron job runs every 10 minutes and fully wipes expired boards. Zero trace left.</div>
         </div>
-      </>
-    )
-  }},
+        <div className="dash"/>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:13,fontWeight:700,margin:'8px 0'}}><span>TOTAL COST</span><span>$0.00</span></div>
+        <div style={{textAlign:'center',fontSize:10,color:'#9b9b96',marginTop:8,letterSpacing:'0.15em'}}>|||||| ||| || |||| ||| | ||||</div>
+        <div style={{fontSize:9,color:'#9b9b96',textAlign:'center',marginTop:3}}>whispr.name.ng</div>
+      </div>
+    </>
+  )
+}
 
-  // 8 — PASSWORD
-  { dur:9000, render:()=>{
-    const [filled,setFilled] = useState(0)
-    const [granted,setGranted] = useState(false)
-    useEffect(()=>{
-      function run() {
-        let i=0
-        const iv=setInterval(()=>{
-          if(i<8){ setFilled(i+1); i++ }
-          else {
-            clearInterval(iv); setGranted(true)
-            setTimeout(()=>{ setFilled(0); setGranted(false); setTimeout(run,400) },2200)
-          }
-        },160)
-      }
-      const t=setTimeout(run,600)
-      return ()=>clearTimeout(t)
-    },[])
-    return (
-      <>
-        <div className="ftag">FEATURE 08 — PASSWORD PROTECTION</div>
-        <div className="ir">
-          <div style={{textAlign:'center',marginBottom:12}}><div style={{fontSize:24,marginBottom:4}}>🔒</div><div style={{fontSize:14,fontWeight:700,letterSpacing:'0.1em'}}>ACCESS RESTRICTED</div><div style={{fontSize:10,color:'#6b6b67',marginTop:2}}>BOARD: SS3-CLASS · PASSWORD REQUIRED</div></div>
-          <div className="dash"/>
-          <div style={{fontSize:10,color:'#6b6b67',margin:'8px 0 6px',letterSpacing:'0.06em'}}>ENTER PASSWORD</div>
-          <div style={{display:'flex',gap:5,justifyContent:'center',margin:'10px 0'}}>
-            {Array.from({length:8},(_,i)=><span key={i} className={`pwdot${i<filled?' on':''}`}/>)}
-          </div>
-          <div style={{height:14,fontSize:10,color:'#9b9b96',textAlign:'center',marginBottom:4}}>{granted?'✓ PASSWORD VERIFIED':''}</div>
-          <div className="dash" style={{margin:'8px 0'}}/>
-          <div style={{padding:10,background:granted?'#16a34a':'#1a1a18',color:'#f5f2eb',textAlign:'center',fontSize:12,fontWeight:700,letterSpacing:'0.1em',transition:'background .3s'}}>
-            {granted?'ACCESS GRANTED ✓':'ENTER BOARD →'}
-          </div>
-          <div className="dash" style={{margin:'10px 0'}}/>
-          <div style={{fontSize:10,color:'#6b6b67',lineHeight:1.9}}>Password hashed with SHA-256, never stored as plaintext. Optional — boards can be open or locked. Wrong password = denied.</div>
-        </div>
-      </>
-    )
-  }},
-
-  // 9 — FULL RECAP
-  { dur:10000, render:()=>{
-    const items=[['01','ANONYMOUS POSTING','No accounts, random aliases, zero identity data'],['02','REAL-TIME FEED','Posts appear instantly via Supabase websockets'],['03','LIVE PRESENCE','See how many are on the board right now'],['04','10 REACTIONS','Anonymous, counts update live for everyone'],['05','REPLY THREADS','Nested, anonymous, real-time'],['06','IMAGE & VIDEO','50MB max, greyscale, plays inline'],['07','BOARD EXPIRY','24h · 7d · 30d · ∞ — auto-wipes at zero'],['08','PASSWORD LOCK','SHA-256, optional, per-device memory'],['09','SOCIAL SHARE','5 platforms, receipt PNG, one tap'],['10','DARK MODE','Toggle, localStorage, instant'],['11','MOBILE READY','Bottom sheet, FAB, touch optimized']]
-    const [shown,setShown]=useState(0)
-    useEffect(()=>{
-      const ivs=items.map((_,i)=>setTimeout(()=>setShown(n=>n+1),i*180+200))
-      return ()=>ivs.forEach(clearTimeout)
-    },[])
-    return (
-      <>
-        <div className="ftag">ALL FEATURES — COMPLETE RECEIPT</div>
-        <div className="ir">
-          <div style={{textAlign:'center',marginBottom:10}}><div style={{fontSize:20,fontWeight:700,letterSpacing:'0.15em'}}>WHISPR</div><div style={{fontSize:10,color:'#6b6b67',letterSpacing:'0.1em',marginTop:2}}>EVERYTHING INCLUDED · $0.00</div></div>
-          <div className="dash"/>
-          <div style={{margin:'8px 0'}}>
-            {items.slice(0,shown).map(([n,t,d])=>(
-              <div key={n} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'5px 0',borderBottom:'1px dashed #c5c5bf',fontSize:11}}>
-                <div><span style={{color:'#9b9b96',fontSize:9,marginRight:6}}>{n}</span>{t}<div style={{fontSize:9,color:'#9b9b96',marginTop:1}}>{d}</div></div>
-                <span style={{color:'#22c55e',fontWeight:700,marginLeft:8}}>✓</span>
-              </div>
-            ))}
-          </div>
-          <div className="dash"/>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,fontWeight:700,margin:'8px 0'}}><span>TOTAL COST</span><span>$0.00</span></div>
-          <div style={{textAlign:'center',fontSize:10,color:'#9b9b96',marginTop:8,letterSpacing:'0.15em'}}>|||||| ||| || |||| ||| | ||||</div>
-          <div style={{fontSize:9,color:'#9b9b96',textAlign:'center',marginTop:3}}>whispr.name.ng</div>
-        </div>
-      </>
-    )
-  }},
+/* ── Slide registry — Components, not render functions ── */
+const INTRO_SLIDES = [
+  { dur:6500,  Component: S0Hero },
+  { dur:8000,  Component: S1HowItWorks },
+  { dur:8500,  Component: S2AnonPosting },
+  { dur:8000,  Component: S3RealtimeFeed },
+  { dur:7500,  Component: S4LivePresence },
+  { dur:7500,  Component: S5Reactions },
+  { dur:8500,  Component: S6Replies },
+  { dur:8000,  Component: S7Expiry },
+  { dur:9000,  Component: S8Password },
+  { dur:10000, Component: S9Recap },
 ]
