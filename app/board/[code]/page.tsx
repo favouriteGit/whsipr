@@ -30,6 +30,7 @@ export default function BoardPage() {
   const [replying, setReplying]     = useState<Confession | null>(null)
   const [toast, setToast]           = useState<{ msg: string; ok: boolean } | null>(null)
   const [mobileSheet, setMobileSheet] = useState(false)
+  const [showIntro, setShowIntro]     = useState(false)
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window === 'undefined') return false
     return localStorage.getItem('whispr_theme') === 'dark'
@@ -39,6 +40,13 @@ export default function BoardPage() {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     localStorage.setItem('whispr_theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
+
+  /* ── Show stories intro to first-time visitors joining via invite link ── */
+  useEffect(() => {
+    const seen = localStorage.getItem('whispr_intro_seen')
+    if (!seen) setShowIntro(true)
+  }, [])
+
   const [liveCount, setLiveCount]   = useState(0)
   const [newBadge, setNewBadge]     = useState(false)
   const [presence, setPresence]     = useState(1) // at least the current user
@@ -301,6 +309,37 @@ export default function BoardPage() {
 
   if (needsPassword) return (
     <PasswordGate board={board!} onSuccess={() => { setNeedsPassword(false); load() }} />
+  )
+
+  /* ── Board intro: full-screen stories for first-time visitors ── */
+  if (showIntro) return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: '#111110' }}>
+      <iframe
+        src="/whispr-stories-v2.html"
+        style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+        title="Whispr intro"
+      />
+      {/* Skip button sits on top of iframe */}
+      <button
+        onClick={() => {
+          localStorage.setItem('whispr_intro_seen', '1')
+          setShowIntro(false)
+        }}
+        style={{
+          position: 'fixed', bottom: 90, right: 20,
+          background: 'rgba(17,17,16,0.8)',
+          border: '1px solid rgba(245,242,235,0.25)',
+          color: 'rgba(245,242,235,0.5)',
+          padding: '8px 16px',
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: '10px', letterSpacing: '0.12em',
+          cursor: 'pointer', zIndex: 10000,
+          backdropFilter: 'blur(4px)',
+        }}
+      >
+        SKIP &amp; ENTER BOARD ✕
+      </button>
+    </div>
   )
 
   return (
