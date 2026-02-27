@@ -1,2 +1,7 @@
-node_modules 
-.next 
+node_modules
+.next
+.env
+.env.local
+.env.development
+.env.production
+.env*.local
