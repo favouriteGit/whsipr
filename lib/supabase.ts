@@ -72,8 +72,10 @@ export function setBoardAccess(boardId: string) {
 }
 
 export async function getConfessions(boardId: string, boardCode: string): Promise<Confession[]> {
-  await supabase.rpc('set_board_code', { code: boardCode })
-  const { data, error } = await supabase.rpc('get_confessions_with_reactions', { p_board_id: boardId })
+  const { data, error } = await supabase.rpc('get_confessions_with_reactions_by_code', { 
+    p_board_id: boardId,
+    p_board_code: boardCode
+  })
   if (error) throw error
   return (data || []) as Confession[]
 }
