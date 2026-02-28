@@ -86,7 +86,7 @@ export default function BoardPage() {
   .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, async () => setConfessions(await getConfessions(board.id, code)))
   .on('postgres_changes', { event: '*', schema: 'public', table: 'replies' }, async () => setConfessions(await getConfessions(board.id, code)))
   .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'confessions' }, async () => {
-        const c = await getConfessions(board.id); setConfessions(c); setLiveCount(c.length)
+        const c = await getConfessions(board.id, code); setConfessions(c); setLiveCount(c.length)
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
