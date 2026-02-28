@@ -66,7 +66,7 @@ export default function BoardPage() {
       if (b.has_password && !getBoardAccess(b.id)) {
         setNeedsPassword(true); setLoading(false); return
       }
-      const [c, r] = await Promise.all([getConfessions(b.id), getMyReactions(b.id, sid)])
+      const [c, r] = await Promise.all([getConfessions(b.id, code), getMyReactions(b.id, sid)])
       setConfessions(c); setMyReactions(r); setLiveCount(c.length)
     } catch { setNotFound(true) }
     finally { setLoading(false) }
