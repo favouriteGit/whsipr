@@ -71,11 +71,8 @@ export function setBoardAccess(boardId: string) {
   if (typeof window !== 'undefined') localStorage.setItem(`whispr_access_${boardId}`, 'granted')
 }
 
-export async function getConfessions(boardId: string, boardCode: string): Promise<Confession[]> {
-  const { data, error } = await supabase.rpc('get_confessions_with_reactions_by_code', { 
-    p_board_id: boardId,
-    p_board_code: boardCode
-  })
+export async function getConfessions(boardId: string, boardCode?: string): Promise<Confession[]> {
+  const { data, error } = await supabase.rpc('get_confessions_with_reactions', { p_board_id: boardId })
   if (error) throw error
   return (data || []) as Confession[]
 }
