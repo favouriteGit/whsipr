@@ -547,9 +547,19 @@ function ReceiptCard({ confession: c, index, myReactions, onReact, onShare, onRe
         {c.image_url && (
           <div className="img-wrapper" style={{ marginBottom: '12px', border: '1px solid var(--ink-5)' }}>
             {c.image_url.match(/\.(mp4|mov|webm|ogg)(\?|$)/i) ? (
-              <video src={c.image_url} controls playsInline
-                     style={{ width: '100%', display: 'block', maxHeight: '280px', background: '#000' }}
-                     onContextMenu={e => e.preventDefault()} />
+              <video
+  src={c.image_url}
+  autoPlay
+  loop
+  muted
+  playsInline
+  style={{ width: '100%', display: 'block', maxHeight: '280px', background: '#000', cursor: 'pointer' }}
+  onContextMenu={e => e.preventDefault()}
+  onClick={e => {
+    const v = e.currentTarget
+    v.muted ? (v.muted = false) : (v.muted = true)
+  }}
+/>
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={c.image_url} alt="attached" className="no-save"
