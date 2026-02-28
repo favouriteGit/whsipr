@@ -78,14 +78,14 @@ export default function BoardPage() {
   useEffect(() => {
     if (!board) return
     const ch = supabase.channel(`board:${board.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confessions', filter: `board_id=eq.${board.id}` }, async () => {
-        const c = await getConfessions(board.id)
-        setConfessions(c); setLiveCount(c.length)
-        setNewBadge(true); setTimeout(() => setNewBadge(false), 3000)
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, async () => setConfessions(await getConfessions(board.id)))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'replies' }, async () => setConfessions(await getConfessions(board.id)))
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'confessions' }, async () => {
+  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confessions', filter: `board_id=eq.${board.id}` }, async () => {
+    const c = await getConfessions(board.id, code)
+    setConfessions(c); setLiveCount(c.length)
+    setNewBadge(true); setTimeout(() => setNewBadge(false), 3000)
+  })
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'reactions' }, async () => setConfessions(await getConfessions(board.id, code)))
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'replies' }, async () => setConfessions(await getConfessions(board.id, code)))
+  .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'confessions' }, async () => {
         const c = await getConfessions(board.id); setConfessions(c); setLiveCount(c.length)
       })
       .subscribe()
