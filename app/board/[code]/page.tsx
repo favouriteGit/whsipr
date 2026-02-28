@@ -649,7 +649,7 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading]       = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
-  const [uploadStage, setUploadStage] = useState<'idle' | 'reading' | 'uploading' | 'posting'>('idle')
+  const [uploadStage, setUploadStage] = useState<'idle' | 'reading' | 'ready' | 'uploading' | 'posting'>('idle')
   const fileRef                     = useRef<HTMLInputElement>(null)
 
   function pickImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -661,7 +661,7 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
     setUploadProgress(0)
     const reader = new FileReader()
     reader.onprogress = (ev) => { if (ev.lengthComputable) setUploadProgress(Math.round((ev.loaded / ev.total) * 40)) }
-    reader.onload = ev => { setImagePreview(ev.target?.result as string); setUploadProgress(100); setUploadStage('idle') }
+    reader.onload = ev => { setImagePreview(ev.target?.result as string); setUploadProgress(100); setUploadStage('ready') }
     reader.readAsDataURL(file)
   }
 
@@ -733,10 +733,14 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imagePreview} alt="preview" style={{ width: '100%', maxHeight: '140px', objectFit: 'cover', display: 'block', filter: 'grayscale(20%)' }} />
               )}
-              <button type="button" onClick={() => { setImage(null); setImagePreview(null); setUploadProgress(0); setUploadStage('idle') }}
+              <button type="button" onClick={() => { setImage(null); setImagePreview(null); setUploadProgress(0); setUploadStage('idle'); if(fileRef.current) fileRef.current.value = '' }}
                       style={{ position: 'absolute', top: '6px', right: '6px', background: 'var(--ink)', color: 'var(--paper)', border: 'none', padding: '3px 8px', fontSize: '10px', fontFamily: "'IBM Plex Mono',monospace", cursor: 'pointer' }}>✕</button>
               <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(26,26,24,0.75)', color: '#fff', padding: '2px 7px', fontSize: '9px', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.05em' }}>
-                {image.type.startsWith('video/') ? '▶ ' : ''}{image.size > 1024 * 1024 ? (image.size / 1024 / 1024).toFixed(1) + 'MB' : (image.size / 1024).toFixed(0) + 'KB'}
+                <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(26,26,24,0.85)', color: '#4ade80', padding: '3px 9px', fontSize: '9px', fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+  <span style={{ color: '#4ade80' }}>✓ READY</span>
+  <span style={{ color: 'rgba(255,255,255,0.4)' }}>·</span>
+  <span style={{ color: 'rgba(255,255,255,0.6)' }}>{image.type.startsWith('video/') ? '▶ ' : ''}{image.size > 1024 * 1024 ? (image.size / 1024 / 1024).toFixed(1) + 'MB' : (image.size / 1024).toFixed(0) + 'KB'}</span>
+</div>
               </div>
             </div>
           ) : (
@@ -785,14 +789,16 @@ function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: strin
         <p style={{ fontSize: '9px', color: 'var(--ink-4)', letterSpacing: '0.03em', lineHeight: 1.7, textAlign: 'center' }}>
           BY POSTING YOU CONFIRM THIS IS NOT USED FOR BLACKMAIL, HARASSMENT OR ILLEGAL ACTIVITY.
         </p>
-        <button type="submit" disabled={loading || !text.trim()} className="btn-primary"
-                style={{ width: '100%', padding: '11px', opacity: loading || !text.trim() ? 0.5 : 1 }}>
-          {loading
-            ? uploadStage === 'uploading' ? `UPLOADING... ${uploadProgress}%`
-            : uploadStage === 'posting' ? 'POSTING...'
-            : 'PROCESSING...'
-            : 'ISSUE RECEIPT'}
-        </button>
+        <button type="submit" disabled={loading || !text.trim() || uploadStage === 'reading'} className="btn-primary"
+        style={{ width: '100%', padding: '11px', opacity: loading || !text.trim() || uploadStage === 'reading' ? 0.5 : 1 }}>
+  {loading
+    ? uploadStage === 'uploading' ? `UPLOADING... ${uploadProgress}%`
+    : uploadStage === 'posting' ? 'POSTING...'
+    : 'PROCESSING...'
+    : uploadStage === 'reading' ? 'LOADING MEDIA...'
+    : uploadStage === 'ready' ? 'ISSUE RECEIPT ✓ + MEDIA'
+    : 'ISSUE RECEIPT'}
+</button>
       </form>
     </Modal>
   )
