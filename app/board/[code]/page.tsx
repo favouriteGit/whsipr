@@ -545,30 +545,17 @@ function ReceiptCard({ confession: c, index, myReactions, onReact, onShare, onRe
 
         {/* Image or Video */}
         {c.image_url && (
-          <div className="img-wrapper" style={{ marginBottom: '12px', border: '1px solid var(--ink-5)' }}>
-            {c.image_url.match(/\.(mp4|mov|webm|ogg)(\?|$)/i) ? (
-              <video
-  src={c.image_url}
-  autoPlay
-  loop
-  muted
-  playsInline
-  style={{ width: '100%', display: 'block', maxHeight: '280px', background: '#000', cursor: 'pointer' }}
-  onContextMenu={e => e.preventDefault()}
-  onClick={e => {
-    const v = e.currentTarget
-    v.muted ? (v.muted = false) : (v.muted = true)
-  }}
-/>
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={c.image_url} alt="attached" className="no-save"
-                   style={{ width: '100%', display: 'block', filter: 'grayscale(25%)' }}
-                   onContextMenu={e => e.preventDefault()} draggable={false} />
-            )}
-            <div style={{ position: 'absolute', inset: 0, cursor: 'default', pointerEvents: 'none' }} />
-          </div>
-        )}
+  <div className="img-wrapper" style={{ marginBottom: '12px', border: '1px solid var(--ink-5)', position: 'relative' }}>
+    {c.image_url.match(/\.(mp4|mov|webm|ogg)(\?|$)/i) ? (
+      <VideoCard src={c.image_url} />
+    ) : (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={c.image_url} alt="attached" className="no-save"
+           style={{ width: '100%', display: 'block', filter: 'grayscale(25%)' }}
+           onContextMenu={e => e.preventDefault()} draggable={false} />
+    )}
+  </div>
+)}
 
         <div className="dash-line" style={{ marginBottom: '10px' }} />
 
@@ -640,7 +627,57 @@ function ReceiptCard({ confession: c, index, myReactions, onReact, onShare, onRe
     </div>
   )
 }
+/* ── Video Card with mute toggle ── */
+function VideoCard({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [muted, setMuted] = useState(true)
 
+  function toggleMute() {
+    if (!videoRef.current) return
+    videoRef.current.muted = !videoRef.current.muted
+    setMuted(videoRef.current.muted)
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <video
+        ref={videoRef}
+        src={src}
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{ width: '100%', display: 'block', maxHeight: '280px', background: '#000' }}
+        onContextMenu={e => e.preventDefault()}
+      />
+      {/* Mute / unmute button */}
+      <button
+        onClick={toggleMute}
+        style={{
+          position: 'absolute',
+          bottom: '8px',
+          right: '8px',
+          background: 'rgba(0,0,0,0.6)',
+          border: '1px solid rgba(255,255,255,0.2)',
+          color: '#fff',
+          borderRadius: '50%',
+          width: '28px',
+          height: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          fontSize: '12px',
+          backdropFilter: 'blur(4px)',
+          zIndex: 10,
+        }}
+        title={muted ? 'Unmute' : 'Mute'}
+      >
+        {muted ? '🔇' : '🔊'}
+      </button>
+    </div>
+  )
+}
 /* ── Confess Modal ── */
 function ConfessModal({ boardId, onClose, onSuccess, onError }: { boardId: string; onClose: () => void; onSuccess: () => void; onError: () => void }) {
   const [text, setText]             = useState('')
